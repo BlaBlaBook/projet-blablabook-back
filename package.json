@@ -15,10 +15,22 @@
     "check:fix": "npm exec -- biome check --write ./"
   },
   "dependencies": {
-    "express": "^5.2.1"
+    "@prisma/client": "^7.1.0",
+    "argon2": "^0.44.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.8",
-    "@types/express": "^5.0.6"
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.1",
+    "prisma": "^7.1.0",
+    "typescript": "^5.9.3"
   }
 }
