@@ -1,16 +1,6 @@
-// Imports
-import express from 'express';
+import { config } from "./config.ts";
+import { app } from "./src/app.ts";
 
-// Create Express app
-const app = express();
-
-// Configuration
-app.get('/', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// Lancer un serveur HTTP
-const port = 3000;
-app.listen(port, () => {
-  console.log(`Server started at http://localhost:${port}`);
+app.listen(config.port, () => {
+  console.log(`Server started at http://localhost:${config.port}`);
 });
