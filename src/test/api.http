@@ -1,0 +1,6 @@
+## Rest Client Test file
+@baseUrl=http://localhost:3000
+
+### GET /api/health
+GET {{baseUrl}}/api/health
+
