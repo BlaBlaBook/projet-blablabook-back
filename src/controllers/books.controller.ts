@@ -19,3 +19,41 @@ export async function getBookById(req: Request, res: Response) {
   }
   res.json(book);
 }
+
+export async function createBook(req: Request, res: Response) {
+  const createBookSchema = z.object({
+  isbn: z.string().min(13).max(17),
+  title: z.string().min(1).max(255),
+  year: z.number().int(),
+  summary: z.string().min(1),
+  language: z.string().length(2),
+  pages: z.number().int().min(1),
+  image_url: z.url().max(255),
+});
+
+const { isbn, title, year, summary, language, pages, image_url } = await createBookSchema.parseAsync(req.body);
+
+await assertBooksIsbnUnique(isbn);
+
+  const newBook = await prisma.books.create({
+    data: {
+      isbn,
+      title,
+      year,
+      summary,
+      language,
+      pages,
+      image_url,
+    },
+  });
+  res.status(201).json(newBook);  
+}
+
+async function assertBooksIsbnUnique(isbn: string) {
+  const existingBook = await prisma.books.findUnique({
+    where: { isbn },
+  });
+  if (existingBook) {
+    throw new Error("A book with this ISBN already exists");
+  }
+}
