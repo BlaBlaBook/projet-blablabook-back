@@ -9,4 +9,4 @@ const adapter = new PrismaPg({
 // Instantiate Prisma Client with the adapter
 export const prisma = new PrismaClient({ adapter });
 
-export * from "../../generated/prisma/client.js";
+export * from "../../generated/prisma/client.ts";

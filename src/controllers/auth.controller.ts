@@ -2,7 +2,7 @@ import argon2 from "argon2";
 import z from "zod";
 import { prisma } from "../models/index.ts";
 import type { Request, Response } from "express";
-import { passwordValidationSchema } from "./utils.ts";
+import { passwordValidationSchema } from "../lib/utils.ts";
 import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "../lib/error.ts";
 import { ACCESS_TOKEN_DURATION_IN_MS, generateAccessToken, generateRefreshToken, REFRESH_TOKEN_DURATION_IN_MS } from "../lib/token.ts";
 
@@ -51,7 +51,6 @@ export async function loginUser(req: Request, res: Response) {
     email: z.email(),
     password: z.string()
   });
-
 
   const { email, password } = await loginBodySchema.parseAsync(req.body);
 
