@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { prisma } from "../models/index.ts";
 import { parseIdFromParams } from "./utils.ts";
 import z from "zod";
+import { log } from "console";
 
 export async function getAllBooks(req: Request, res: Response) {
   const books = await prisma.books.findMany();
@@ -47,6 +48,40 @@ await assertBooksIsbnUnique(isbn);
     },
   });
   res.status(201).json(newBook);  
+}
+
+export async function updateBook(req: Request, res: Response){
+  const bookId = await parseIdFromParams(req.params.id);
+  const book = await prisma.books.findUnique({
+    where: { id: bookId },
+  });
+  if (! book) {
+    return res.status(404).json({ message: "Book not found" });
+  }
+
+  const updateBookSchema = z.object({
+    isbn: z.string().min(13).max(17).optional(),
+    title: z.string().min(1).max(255).optional(),
+    year: z.number().int().optional(),
+    summary: z.string().min(1).optional(),
+    language: z.string().length(2).optional(),
+    pages: z.number().int().min(1).optional(),
+    image_url: z.url().max(255).optional(),
+  }).refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided for update",
+  });
+
+  const updateData = await updateBookSchema.parseAsync(req.body);
+
+  if (updateData.isbn) {
+    await assertBooksIsbnUnique(updateData.isbn);
+  }
+
+  const updatedBook = await prisma.books.update({
+    where: { id: bookId },
+    data: updateData,
+  });
+  res.json(updatedBook);    
 }
 
 async function assertBooksIsbnUnique(isbn: string) {
