@@ -1,0 +1,32 @@
+@baseUrl=http://localhost:3000
+
+### GET /api/books
+GET {{baseUrl}}/api/books
+
+### GET /api/books/:id
+GET {{baseUrl}}/api/books/e8409b40-62f4-4aba-afe6-34b494da1b92
+
+### POST /api/books
+POST {{baseUrl}}/api/books
+Content-Type: application/json
+
+{
+  "isbn": "9782266111563",
+  "title": "Mon Livre",
+  "year": 2024,
+  "summary": "Un résumé cool.",
+  "language": "fr",
+  "pages": 320,
+  "image_url": "https://example.com/cover.jpg"
+}
+
+### PATCH /api/books/:id
+PATCH {{baseUrl}}/api/books/e8409b40-62f4-4aba-afe6-34b494da1b92
+Content-Type: application/json  
+
+{
+  "isbn": "9782266111563"
+}
+
+### DELETE /api/books/:id
+DELETE {{baseUrl}}/api/books/e8409b40-62f4-4aba-afe6-34b494da1b92
