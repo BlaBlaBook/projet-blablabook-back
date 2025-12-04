@@ -1,0 +1,7 @@
+@baseUrl=http://localhost:3000
+
+### GET /api/books
+GET {{baseUrl}}/api/books
+
+### GET /api/books/:id
+GET {{baseUrl}}/api/books/e8409b40-62f4-4aba-afe6-34b494da1b92
