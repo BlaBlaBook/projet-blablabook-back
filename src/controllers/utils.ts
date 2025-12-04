@@ -1,11 +1,7 @@
 import z from "zod";
 
 export async function parseIdFromParams(id: unknown) {
-  const idSchema = z
-    .coerce  // permet de transformer STRING -> NUMBER
-    .number("The ID parameter should be a valid integer") // on valide le number
-    .int() // le number est un entier
-    .min(1); // supérieur ou égal à 1
+  const idSchema = z.uuid("The ID parameter should be a valid UUID")
   return await idSchema.parseAsync(id);
 }
 

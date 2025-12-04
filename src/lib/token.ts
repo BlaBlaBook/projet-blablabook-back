@@ -48,11 +48,11 @@ export async function generateRefreshToken(user: users) {
   const refreshToken = crypto.randomBytes(64).toString("base64");
   
   // Stocker le refresh token en BDD
-  await prisma.refreshToken.deleteMany({ where: { user_id: user.id } }); // On supprime le refresh token qui existeraient potentiellement
+  await prisma.refreshToken.deleteMany({ where: { userId: user.id } }); // On supprime le refresh token qui existeraient potentiellement
   await prisma.refreshToken.create({ data: {
-    user_id: user.id,
+    userId: user.id,
     token: refreshToken,
-    expires_at: new Date(Date.now() + REFRESH_TOKEN_DURATION_IN_MS)
+    expiresAt: new Date(Date.now() + REFRESH_TOKEN_DURATION_IN_MS)
   }});
 
   return refreshToken;
