@@ -84,6 +84,21 @@ export async function updateBook(req: Request, res: Response){
   res.json(updatedBook);    
 }
 
+export async function deleteBook(req: Request, res: Response) {
+  const bookId = await parseIdFromParams(req.params.id);
+  const book = await prisma.books.findUnique({
+    where: { id: bookId },
+  });
+  if (! book) {
+    return res.status(404).json({ message: "Book not found" });
+  }
+
+  await prisma.books.delete({
+    where: { id: bookId },
+  });
+  res.status(204).send();  
+}
+
 async function assertBooksIsbnUnique(isbn: string) {
   const existingBook = await prisma.books.findUnique({
     where: { isbn },

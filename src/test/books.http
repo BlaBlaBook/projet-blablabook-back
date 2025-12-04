@@ -27,3 +27,6 @@ Content-Type: application/json
 {
   "isbn": "9782266111563"
 }
+
+### DELETE /api/books/:id
+DELETE {{baseUrl}}/api/books/e8409b40-62f4-4aba-afe6-34b494da1b92
