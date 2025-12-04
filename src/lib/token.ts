@@ -42,9 +42,6 @@ export function generateAccessToken(user: users) {
 }
 
 export async function generateRefreshToken(user: users) {
-  // Refresh Token = Token opaque (64 caractères aléatoires)
-  // - token opaque ? -> chaine de caractère aléatoire
-  // - durée de validité : 7j
   const refreshToken = crypto.randomBytes(64).toString("base64");
   
   // Stocker le refresh token en BDD

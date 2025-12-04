@@ -1,28 +1,26 @@
 import type { NextFunction, Response, Request } from "express";
-import type { Role } from "../models/index.ts";
-import { decodeJWT, extractAccessTokenFromRequest } from "../lib/tokens.ts";
-import { ForbiddenError } from "../lib/errors.ts";
+import type { user_role } from "../models/index.ts";
+import { decodeJWT, extractAccessTokenFromRequest } from "../lib/token.ts";
+import { ForbiddenError } from "../lib/error.ts";
 
-// Ce middleware est STATELESS (comme le JWT) => on n'appelle pas la BDD : le rôle est stocké dans le JWT lui même !
-export function allowRoles(roles: Role[]) {
+export function allowRoles(roles: user_role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    // Extraire l'access token depuis "req" pour tirer le JWT
+    // Get the access token from the request
     const accessToken = extractAccessTokenFromRequest(req);
 
-    // Valider (signature + date expiration) et decoder le JWT 
+    // Validate and decode the JWT
     const { userId, userRole } = decodeJWT(accessToken);
     
-    // Vérifier si l'utilisateur a l'un des rôles demandés pour accéder à la route
+    // Check if the user has the required role
     if (! roles.includes(userRole)) {
       throw new ForbiddenError(`Access denied for role: ${userRole}`);
     }
 
-    // En général, on accroche également à la request (req) les infos utiles du JWT décodé
-    // De sorte à ce que tous les middlewares suivants, puisse accéder facilement à l'utilisateur et son role
+    // Attach user info to the request
     req.userId = userId;
     req.userRole = userRole;
 
-    // Sinon, on laisse passer
+    // Continue to the next middleware
     next();
   };
 }
