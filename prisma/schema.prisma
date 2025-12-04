@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+enum user_role {
+  admin
+  user
+}
+
+enum reading_status {
+  à_lire      @map("à lire")
+  en_cours    @map("en cours")
+  lu
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+// ---------- BOOKS ----------
+model books {
+  id         String       @id @default(uuid()) @db.Uuid
+  isbn       String       @unique @db.VarChar(20)
+  title      String       @db.VarChar(255)
+  year       Int
+  summary    String
+  language   String       @db.VarChar(5)
+  pages      Int
+  image_url  String       @db.VarChar(255)
+  created_at DateTime     @default(now()) @db.Timestamptz
+  updated_at DateTime     @default(now()) @updatedAt @db.Timestamptz
+  
+  authors    book_author[]
+  genres     book_genre[]
+  userRecords user_book_records[]
+
+  @@map("books")
+}
+
+// ---------- AUTHORS ----------
+model authors {
+  id         String       @id @default(uuid()) @db.Uuid
+  last_name  String       @db.VarChar(60)
+  first_name String       @db.VarChar(60)
+  created_at DateTime     @default(now()) @db.Timestamptz
+  updated_at DateTime     @default(now()) @updatedAt @db.Timestamptz
+
+  books      book_author[]
+
+  @@map("authors")
+}
+
+// ---------- BOOK_AUTHOR ----------
+model book_author {
+  id         String    @id @default(uuid()) @db.Uuid
+  book_id    String    @db.Uuid
+  author_id  String    @db.Uuid
+  created_at DateTime  @default(now()) @db.Timestamptz
+  updated_at DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  book   books   @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  author authors @relation(fields: [author_id], references: [id], onDelete: Restrict)
+
+  @@unique([book_id, author_id], name: "book_authors_unique")
+  @@map("book_author")
+}
+
+// ---------- GENRES ----------
+model genres {
+  id         String       @id @default(uuid()) @db.Uuid
+  category   String       @db.VarChar(100)
+  created_at DateTime     @default(now()) @db.Timestamptz
+  updated_at DateTime     @default(now()) @updatedAt @db.Timestamptz
+
+  books      book_genre[]
+
+  @@map("genres")
+}
+
+// ---------- BOOK_GENRE ----------
+model book_genre {
+  id         String    @id @default(uuid()) @db.Uuid
+  book_id    String    @db.Uuid
+  genre_id   String    @db.Uuid
+  created_at DateTime  @default(now()) @db.Timestamptz
+  updated_at DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  book  books  @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  genre genres @relation(fields: [genre_id], references: [id], onDelete: Restrict)
+
+  @@unique([book_id, genre_id], name: "book_genre_unique")
+  @@map("book_genre")
+}
+
+// ---------- USERS ----------
+model users {
+  id         String      @id @default(uuid()) @db.Uuid
+  email      String      @unique @db.VarChar(255)
+  last_name  String?     @db.VarChar(60)
+  first_name String?     @db.VarChar(60)
+  username   String      @unique @db.VarChar(60)
+  password   String      @db.VarChar(255)
+  role       user_role   @default(user)
+  created_at DateTime    @default(now()) @db.Timestamptz
+  updated_at DateTime    @default(now()) @updatedAt @db.Timestamptz
+
+  bookRecords user_book_records[]
+
+  @@map("users")
+}
+
+// ---------- USER_BOOK_RECORDS ----------
+model user_book_records {
+  id             String          @id @default(uuid()) @db.Uuid
+  reading_status reading_status   @default(à_lire)
+  user_id        String          @db.Uuid
+  book_id        String          @db.Uuid
+  created_at     DateTime        @default(now()) @db.Timestamptz
+  updated_at     DateTime        @default(now()) @updatedAt @db.Timestamptz
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book books @relation(fields: [book_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, book_id], name: "user_book_unique")
+  @@map("user_book_records")
+}

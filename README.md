@@ -11,7 +11,7 @@ npm install
 Copier les fichiers d’exemple :
 
 ```bash
-cp env.docker.example env.docker
+cp .env.docker.example .env.docker
 cp .env.example .env
 ```
 
@@ -24,11 +24,16 @@ cp .env.example .env
 Exécuter la stack Docker :
 
 ```bash
-docker compose -p blablabook -f docker-compose.yml --env-file env.docker up -d
+docker compose -p blablabook -f docker-compose.yml --env-file .env.docker up -d
 ```
 
-> `-p blablabook` définit le nom du projet Docker
+> `-p blablabook` définit le nom du projet Docker  
 > `--env-file env.docker` charge les variables pour la DB
+
+Fermer le container db : 
+```bash
+docker compose -f docker-compose.yml --env-file .env.docker down
+```
 
 ---
 

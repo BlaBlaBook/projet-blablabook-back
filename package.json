@@ -16,7 +16,13 @@
     "lint": "npm exec -- biome lint ./",
     "lint:fix": "npm exec -- biome lint --write ./",
     "check": "npm exec -- biome check ./",
-    "check:fix": "npm exec -- biome check --write ./"
+    "check:fix": "npm exec -- biome check --write ./",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:migrate:name": "prisma migrate dev --name",
+    "prisma:studio": "prisma studio",
+    "prisma:reset": "prisma migrate reset --force",
+    "dev:db": "npm run prisma:reset && npm run prisma:generate && npm run prisma:migrate && npm run dev"
   },
   "dependencies": {
     "@prisma/client": "^7.1.0",
