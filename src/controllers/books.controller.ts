@@ -2,7 +2,8 @@ import type { Request, Response } from "express";
 import { prisma } from "../models/index.ts";
 import { parseIdFromParams } from "./utils.ts";
 import z from "zod";
-import { log } from "console";
+import { ConflictError, NotFoundError } from "../lib/error.ts";
+import { th } from "zod/locales";
 
 export async function getAllBooks(req: Request, res: Response) {
   const books = await prisma.books.findMany();
@@ -16,7 +17,7 @@ export async function getBookById(req: Request, res: Response) {
   });
 
   if (! book) {
-    return res.status(404).json({ message: "Book not found" });
+    throw new NotFoundError("Book not found");
   }
   res.json(book);
 }
@@ -56,7 +57,7 @@ export async function updateBook(req: Request, res: Response){
     where: { id: bookId },
   });
   if (! book) {
-    return res.status(404).json({ message: "Book not found" });
+    throw new NotFoundError("Book not found");
   }
 
   const updateBookSchema = z.object({
@@ -90,7 +91,7 @@ export async function deleteBook(req: Request, res: Response) {
     where: { id: bookId },
   });
   if (! book) {
-    return res.status(404).json({ message: "Book not found" });
+    throw new NotFoundError("Book not found");
   }
 
   await prisma.books.delete({
@@ -104,6 +105,6 @@ async function assertBooksIsbnUnique(isbn: string) {
     where: { isbn },
   });
   if (existingBook) {
-    throw new Error("A book with this ISBN already exists");
+    throw new ConflictError("A book with this ISBN already exists");
   }
 }
