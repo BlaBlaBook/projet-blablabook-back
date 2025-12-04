@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import type { JwtPayload } from "jsonwebtoken";
 import type { Request } from "express";
 import { config } from "../../config.ts";
+import { prisma, type users } from "../models/index.ts";
 import { UnauthorizedError } from "./error.ts";
 
 export const ACCESS_TOKEN_DURATION_IN_MS = 1 * 60 * 60 * 1000; // 1h
@@ -30,7 +31,7 @@ export function decodeJWT(accessToken: string): JwtPayload {
   }
 }
 
-export function generateAccessToken(user: User) {
+export function generateAccessToken(user: users) {
   // Générer un JWT
   // - payload : userId
   // - signé : JWT_SECRET (config)
@@ -40,7 +41,7 @@ export function generateAccessToken(user: User) {
   return accessToken;
 }
 
-export async function generateRefreshToken(user: User) {
+export async function generateRefreshToken(user: users) {
   // Refresh Token = Token opaque (64 caractères aléatoires)
   // - token opaque ? -> chaine de caractère aléatoire
   // - durée de validité : 7j

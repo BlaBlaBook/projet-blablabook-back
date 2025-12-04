@@ -1,8 +1,10 @@
 import argon2 from "argon2";
 import z from "zod";
+import { prisma } from "../models/index.ts";
 import type { Request, Response } from "express";
 import { passwordValidationSchema } from "./utils.ts";
 import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "../lib/error.ts";
+import { ACCESS_TOKEN_DURATION_IN_MS, generateAccessToken, generateRefreshToken, REFRESH_TOKEN_DURATION_IN_MS } from "../lib/token.ts";
 
 export async function registerUser(req: Request, res: Response) {
   // Ecrire un schema Zod pour representer et valider le body
@@ -18,7 +20,7 @@ export async function registerUser(req: Request, res: Response) {
 
   // Vérifier si l'utilisateur n'existe pas déjà
   // Si le mail est déja pris => 409
-  const alreadyExistingUser = await prisma.user.findFirst({ where: { email } });
+  const alreadyExistingUser = await prisma.users.findFirst({ where: { email } });
   if (alreadyExistingUser) { throw new ConflictError("Email already taken"); }
 
   // Hacher le mot de passe à l'aide de argon2
@@ -26,7 +28,7 @@ export async function registerUser(req: Request, res: Response) {
   const hashedPassword = await argon2.hash(password);
 
   // Enregistrer l'utilisateur en BDD
-  const createdUser = await prisma.user.create({ data: {
+  const createdUser = await prisma.users.create({ data: {
     firstname,
     lastname,
     email,
@@ -36,8 +38,8 @@ export async function registerUser(req: Request, res: Response) {
   // Répondre en renvoyant un status 201 + user créé (sans son mot de passe)
   res.status(201).json({
     id: createdUser.id,
-    firstname: createdUser.firstname,
-    lastname: createdUser.lastname,
+    firstname: createdUser.first_name,
+    lastname: createdUser.last_name,
     email: createdUser.email,
     created_at: createdUser.created_at,
     updated_at: createdUser.updated_at
@@ -55,7 +57,7 @@ export async function loginUser(req: Request, res: Response) {
   const { email, password } = await loginBodySchema.parseAsync(req.body);
 
   // Récupérer l'utilisateur correspondant dans la BDD (via son email)
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.users.findUnique({ where: { email } });
   // Si non présent => 400 / 401 / 404 (même combat)
   if (!user) { throw new BadRequestError("L'email et le mot de passe ne correspondent pas"); } // Réponse opaque pour ne pas faire fuiter trop d'information sur nos utilisateurs dans notre BDD
 
@@ -117,7 +119,7 @@ export async function getCurrentUser(req: Request, res: Response) {
   const userId = req.userId;
 
   // Récupérer le user en BDD
-  const user = await prisma.user.findUnique({
+  const user = await prisma.users.findUnique({
     where: { id: userId },
     omit: { password: true }
   });
