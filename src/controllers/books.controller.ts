@@ -1,9 +1,8 @@
 import type { Request, Response } from "express";
 import { prisma } from "../models/index.ts";
-import { parseIdFromParams } from "./utils.ts";
+import { parseIdFromParams } from "../lib/utils.ts";
 import z from "zod";
 import { ConflictError, NotFoundError } from "../lib/error.ts";
-import { th } from "zod/locales";
 
 export async function getAllBooks(req: Request, res: Response) {
   const books = await prisma.books.findMany();
