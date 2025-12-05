@@ -37,7 +37,16 @@ docker compose -f docker-compose.yml --env-file .env.docker down
 
 ---
 
-## 4. ▶️ Lancer le serveur Express.js
+## 4. 💎 Générer et Migrer Prisma 
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+```
+
+---
+
+## 5. ▶️ Lancer le serveur Express.js
 
 ```bash
 npm run dev
