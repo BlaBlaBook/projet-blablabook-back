@@ -22,7 +22,8 @@
     "prisma:migrate:name": "prisma migrate dev --name",
     "prisma:studio": "prisma studio",
     "prisma:reset": "prisma migrate reset --force",
-    "dev:db": "npm run prisma:reset && npm run prisma:generate && npm run prisma:migrate && npm run dev"
+    "dev:db": "npm run prisma:reset && npm run prisma:generate && npm run prisma:migrate && npm run dev",
+    "db:seed": "node --env-file=.env ./src/models/seeding.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
