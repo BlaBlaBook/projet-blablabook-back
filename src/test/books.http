@@ -17,8 +17,20 @@ Content-Type: application/json
   "summary": "Un résumé cool.",
   "language": "fr",
   "pages": 320,
-  "image_url": "https://example.com/cover.jpg"
+  "image_url": "https://example.com/cover.jpg",
+  "authors": [
+    {
+      "first_name": "Jean",
+      "last_name": "Dupont"
+    }
+  ],
+  "genres": [
+    {
+      "category": "Science Fiction"
+    }
+  ]
 }
+
 
 ### PATCH /api/books/:id
 PATCH {{baseUrl}}/api/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
