@@ -7,15 +7,12 @@ import { prisma, type users } from "../models/index.ts";
 import { UnauthorizedError } from "./error.ts";
 
 export const ACCESS_TOKEN_DURATION_IN_MS = 1 * 60 * 60 * 1000; // 1h
-export const REFRESH_TOKEN_DURATION_IN_MS = 7 * 24 * 60 * 60 * 1000; // 7j
+export const REFRESH_TOKEN_DURATION_IN_MS = 7 * 24 * 60 * 60 * 1000; // 7d
 
 export function decodeJWT(accessToken: string): JwtPayload {
   try {
-    // Vérifier la validité du JWT
-    // - est-ce qu'il est bien signé ?
-    // - est-ce qu'il n'est pas périmé ?
-    // - décoder pour récupérer le payload ==> userId
-    const payload = jwt.verify(accessToken, config.jwtSecret) as JwtPayload; // Type assertion
+    // Verify & decode
+    const payload = jwt.verify(accessToken, config.jwtSecret) as JwtPayload;
     return payload;
 
   } catch (error) {
@@ -32,20 +29,17 @@ export function decodeJWT(accessToken: string): JwtPayload {
 }
 
 export function generateAccessToken(user: users) {
-  // Générer un JWT
-  // - payload : userId
-  // - signé : JWT_SECRET (config)
-  // - durée de validité : 1h (optimal : 15min)
+  // Create JWT
   const payload = { userId: user.id, userRole: user.role };
-  const accessToken = jwt.sign(payload, config.jwtSecret, { expiresIn: ACCESS_TOKEN_DURATION_IN_MS / 1000 }); // Access Token = JWT 
+  const accessToken = jwt.sign(payload, config.jwtSecret, { expiresIn: ACCESS_TOKEN_DURATION_IN_MS / 1000 }); 
   return accessToken;
 }
 
 export async function generateRefreshToken(user: users) {
   const refreshToken = crypto.randomBytes(64).toString("base64");
   
-  // Stocker le refresh token en BDD
-  await prisma.refreshToken.deleteMany({ where: { userId: user.id } }); // On supprime le refresh token qui existeraient potentiellement
+  // Store in DB
+  await prisma.refreshToken.deleteMany({ where: { userId: user.id } }); 
   await prisma.refreshToken.create({ data: {
     userId: user.id,
     token: refreshToken,
@@ -56,20 +50,18 @@ export async function generateRefreshToken(user: users) {
 }
 
 export function extractAccessTokenFromRequest(req: Request) {
-  // On essaie de chopper l'access token depuis le header authorization
-  // Si il y est, on le renvoie !
+  // From header
   const authorizationHeader = req.headers.authorization;
   if (typeof authorizationHeader === "string") {
-    return authorizationHeader.substring("Bearer ".length); // On ne garde que l'access token, sans le "Bearer " devant
+    return authorizationHeader.substring("Bearer ".length); 
   }
 
-  // On essaie de chopper l'access token depuis le cookie "accessToken"
-  // Si il y est, on le renvoie !
+  // From cookie
   const accessTokenCookie = req.cookies.accessToken;
   if (typeof accessTokenCookie === "string") {
     return accessTokenCookie;
   }
 
-  // On renvoie une 401 --> throw UnauthorizedError
+  // Not found
   throw new UnauthorizedError("Access token not provided in Authorization headers nor Cookies");
 }

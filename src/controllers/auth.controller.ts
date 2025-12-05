@@ -68,8 +68,6 @@ export async function loginUser(req: Request, res: Response) {
 
   // Send tokens via cookies
   setTokensInCookies(res, accessToken, refreshToken);
-
-  res.json({ accessToken, refreshToken });
 }
 
 export async function refreshAccessToken(req: Request, res: Response) {
@@ -90,9 +88,6 @@ export async function refreshAccessToken(req: Request, res: Response) {
   const newRefreshToken = await generateRefreshToken(storedToken.user);
 
   setTokensInCookies(res, accessToken, newRefreshToken);
-  
-  res.json({ accessToken, refreshToken: newRefreshToken });
-  
 }
 
 export async function getCurrentUser(req: Request, res: Response) {
@@ -105,7 +100,7 @@ export async function getCurrentUser(req: Request, res: Response) {
     omit: { password: true }
   });
   
-  if (! user) {
+  if (!user) {
     throw new NotFoundError("No user associated with this access token");
   }
 

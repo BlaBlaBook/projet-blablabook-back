@@ -1,6 +1,36 @@
 ## Rest Client Test file
-@baseUrl=http://localhost:3000
+@baseUrl=http://localhost:3000/api
+@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3NDc2YWJjYS0wNWFiLTQ2OGUtYWZlNi03Y2U1YTNhYzFiNzMiLCJ1c2VyUm9sZSI6InVzZXIiLCJpYXQiOjE3NjQ5MjkxNTMsImV4cCI6MTc2NDkzMjc1M30.9logmTTcQXRCjiqWgHeo9ikOM8o4NBZgfWpddy0zovs
+@refreshToken=/iOEc48aCFvSxlO1xwXIENEMMbBoJB4akqDeoIHOEC46n8zD9IxefmVZ7U0k+/h7Ura4EOaucZT/LN70Nprzrg==
 
-### GET /api/health
-GET {{baseUrl}}/api/health
+### GET /health
+GET {{baseUrl}}/health
 
+
+### POST Register /auth/register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "toto",
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "test@example.com",
+  "password": "Test1234!"
+}
+
+### POST Login /auth/login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test1234!"
+}
+
+### GET User Profile (Protected) /auth/me
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{accessToken}}
+
+### POST Logout /auth/logout
+POST {{baseUrl}}/auth/logout
