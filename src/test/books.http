@@ -4,7 +4,7 @@
 GET {{baseUrl}}/api/books
 
 ### GET /api/books/:id
-GET {{baseUrl}}/api/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
+GET {{baseUrl}}/api/books/e6b8f93c-2a10-4f13-beb8-01ec8365c36c
 
 ### POST /api/books
 POST {{baseUrl}}/api/books

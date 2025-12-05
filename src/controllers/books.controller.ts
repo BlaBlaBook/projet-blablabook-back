@@ -5,21 +5,15 @@ import { ConflictError, NotFoundError } from "../lib/error.ts";
 import { createBookSchema, updateBookSchema } from "../schemas/books.schema.ts";
 
 export async function getAllBooks(req: Request, res: Response) {
+  // Fetch all books with their authors and genres
   const books = await prisma.books.findMany({
     include: {
-      authors: {
-        include: {
-          author: true,
-        },
-      },
-      genres: {
-        include: {
-          genre: true,
-        },
-      },
+      authors: { include: { author: true } }, // include author details
+      genres: { include: { genre: true } },   // include genre details
     },
   });
 
+  // Format books to hide pivot tables and only return relevant data
   const formattedBooks = books.map((b) => ({
     id: b.id,
     isbn: b.isbn,
@@ -49,10 +43,41 @@ export async function getAllBooks(req: Request, res: Response) {
 export async function getBookById(req: Request, res: Response) {
   const bookId = await parseIdFromParams(req.params.id);
 
-  const book = await prisma.books.findUnique({ where: { id: bookId } });
+  // Fetch the book by ID with authors and genres
+  const book = await prisma.books.findUnique({
+    where: { id: bookId },
+    include: {
+      authors: { include: { author: true } },
+      genres: { include: { genre: true } },
+    },
+  });
+
   if (!book) throw new NotFoundError("Book not found");
 
-  res.json(book);
+  // Format the book object to hide pivot tables
+  const formattedBook = {
+    id: book.id,
+    isbn: book.isbn,
+    title: book.title,
+    year: book.year,
+    summary: book.summary,
+    language: book.language,
+    pages: book.pages,
+    image_url: book.image_url,
+    authors: book.authors.map((ba) => ({
+      id: ba.author.id,
+      first_name: ba.author.first_name,
+      last_name: ba.author.last_name,
+    })),
+    genres: book.genres.map((bg) => ({
+      id: bg.genre.id,
+      category: bg.genre.category,
+    })),
+    created_at: book.created_at,
+    updated_at: book.updated_at,
+  };
+
+  res.json(formattedBook);
 }
 
 export async function createBook(req: Request, res: Response) {
