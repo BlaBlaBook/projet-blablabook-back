@@ -4,7 +4,7 @@
 GET {{baseUrl}}/api/books
 
 ### GET /api/books/:id
-GET {{baseUrl}}/api/books/e8409b40-62f4-4aba-afe6-34b494da1b92
+GET {{baseUrl}}/api/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
 
 ### POST /api/books
 POST {{baseUrl}}/api/books
@@ -21,12 +21,13 @@ Content-Type: application/json
 }
 
 ### PATCH /api/books/:id
-PATCH {{baseUrl}}/api/books/e8409b40-62f4-4aba-afe6-34b494da1b92
+PATCH {{baseUrl}}/api/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
 Content-Type: application/json  
 
 {
-  "isbn": "9782266111563"
+  "title": "Mon Nouveau Livre",
+  "pages": 350
 }
 
 ### DELETE /api/books/:id
-DELETE {{baseUrl}}/api/books/e8409b40-62f4-4aba-afe6-34b494da1b92
+DELETE {{baseUrl}}/api/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
