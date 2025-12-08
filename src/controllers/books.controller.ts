@@ -5,22 +5,25 @@ import { ConflictError, NotFoundError } from "../lib/error.ts";
 import { createBookSchema, updateBookSchema } from "../schemas/books.schema.ts";
 
 export async function getAllBooks(req: Request, res: Response) {
-  // On récupère l'ID de l'utilisateur connecté (via le middleware getUser)
+  // Retrieve the ID of the authenticated user (set by the getUser middleware)
   const userId = req.userId;
 
-  // Fetch all books avec auteurs, genres et éventuellement le reading_status de l'utilisateur
+  // Fetch all books with authors, genres, and optionally the user's reading_status
   const books = await prisma.books.findMany({
     include: {
       authors: { include: { author: true } },
       genres: { include: { genre: true } },
-      userRecords: userId ? { 
-        where: { user_id: userId }, // filtre sur l'utilisateur connecté
-        select: { reading_status: true } 
-      } : false, // si pas connecté, ne récupère pas les records
+      userRecords: userId
+        ? {
+            // Only fetch the record belonging to the authenticated user
+            where: { user_id: userId },
+            select: { reading_status: true },
+          }
+        : false, // If the user is not logged in, skip userRecords
     },
   });
 
-  // Formatage des données
+  // Format the response data
   const formattedBooks = books.map((b) => ({
     id: b.id,
     isbn: b.isbn,
@@ -39,7 +42,8 @@ export async function getAllBooks(req: Request, res: Response) {
       id: bg.genre.id,
       category: bg.genre.category,
     })),
-    reading_status: b.userRecords?.[0]?.reading_status ?? null, // null si pas connecté ou pas de record
+    // If the user isn't logged in or no record exists, reading_status = null
+    reading_status: b.userRecords?.[0]?.reading_status ?? null,
     created_at: b.created_at,
     updated_at: b.updated_at,
   }));
@@ -47,22 +51,28 @@ export async function getAllBooks(req: Request, res: Response) {
   res.json(formattedBooks);
 }
 
-
 export async function getBookById(req: Request, res: Response) {
   const bookId = await parseIdFromParams(req.params.id);
+  const userId = req.userId; 
 
-  // Fetch the book by ID with authors and genres
+  // Fetch the book by ID with authors, genres, and optionally user's reading_status
   const book = await prisma.books.findUnique({
     where: { id: bookId },
     include: {
       authors: { include: { author: true } },
       genres: { include: { genre: true } },
+      userRecords: userId
+        ? {
+            where: { user_id: userId },
+            select: { reading_status: true },
+          }
+        : false,
     },
   });
 
   if (!book) throw new NotFoundError("Book not found");
 
-  // Format the book object to hide pivot tables
+  // Format the book object
   const formattedBook = {
     id: book.id,
     isbn: book.isbn,
@@ -81,6 +91,7 @@ export async function getBookById(req: Request, res: Response) {
       id: bg.genre.id,
       category: bg.genre.category,
     })),
+    reading_status: book.userRecords?.[0]?.reading_status ?? null, 
     created_at: book.created_at,
     updated_at: book.updated_at,
   };
