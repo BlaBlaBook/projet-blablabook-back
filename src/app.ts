@@ -10,7 +10,10 @@ import { globalErrorHandler } from "./middlewares/global-error-handler.middlewar
 export const app = express();
 
 // Autoriser les requêtes cross-origin
-app.use(cors({ origin: config.allowedOrigins }));
+app.use(cors({ 
+  origin: config.allowedOrigins,
+  credentials: true,
+}));
 
 // Body parser (application/json)
 app.use(express.json());

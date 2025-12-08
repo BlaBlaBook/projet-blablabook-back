@@ -63,5 +63,5 @@ export function extractAccessTokenFromRequest(req: Request) {
   }
 
   // Not found
-  throw new UnauthorizedError("Access token not provided in Authorization headers nor Cookies");
+  throw new UnauthorizedError("Access token not provided in Authorization headers or Cookies");
 }

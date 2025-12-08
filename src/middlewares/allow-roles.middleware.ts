@@ -12,7 +12,7 @@ export function allowRoles(roles: user_role[]) {
     const { userId, userRole } = decodeJWT(accessToken);
     
     // Check if the user has the required role
-    if (! roles.includes(userRole)) {
+    if (!roles.includes(userRole)) {
       throw new ForbiddenError(`Access denied for role: ${userRole}`);
     }
 
