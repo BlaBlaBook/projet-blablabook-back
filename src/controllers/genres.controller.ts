@@ -9,3 +9,18 @@ export async function getAllGenres(req: Request, res: Response) {
   res.json(genres);
 }
 
+export async function deleteGenre(req: Request, res: Response) {
+  const genreId = await parseIdFromParams(req.params.id);
+
+  const existingGenre = await prisma.genres.findUnique({
+    where: { id: genreId },
+  });
+
+  if (!existingGenre) throw new NotFoundError("Genre not found");
+
+  await prisma.genres.delete({
+    where: { id: genreId },
+  });
+
+  res.status(204).send();
+}
