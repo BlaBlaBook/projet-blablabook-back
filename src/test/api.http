@@ -1,8 +1,6 @@
 ## Rest Client Test file
 @baseUrl=http://localhost:3000/api
-@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3NDc2YWJjYS0wNWFiLTQ2OGUtYWZlNi03Y2U1YTNhYzFiNzMiLCJ1c2VyUm9sZSI6InVzZXIiLCJpYXQiOjE3NjQ5MjkxNTMsImV4cCI6MTc2NDkzMjc1M30.9logmTTcQXRCjiqWgHeo9ikOM8o4NBZgfWpddy0zovs
-@refreshToken=/iOEc48aCFvSxlO1xwXIENEMMbBoJB4akqDeoIHOEC46n8zD9IxefmVZ7U0k+/h7Ura4EOaucZT/LN70Nprzrg==
-
+@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1YjZhMTc4Yi1kZTIwLTQwNGYtYTk5MC02YjFjMGJkMWI5OWIiLCJ1c2VyUm9sZSI6InVzZXIiLCJpYXQiOjE3NjUyMDIyMDksImV4cCI6MTc2NTIwNTgwOX0.itiAhaX7jV05KP7-_X8YR4Q8S_x4t8MqoCOcmTfOG_4
 ### GET /health
 GET {{baseUrl}}/health
 
@@ -13,10 +11,9 @@ Content-Type: application/json
 
 {
   "username": "toto",
-  "first_name": "John",
-  "last_name": "Doe",
   "email": "test@example.com",
-  "password": "Test1234!"
+  "password": "Test1234!",
+  "confirmPassword": "Test1234!"
 }
 
 ### POST Login /auth/login
@@ -24,7 +21,9 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "test@example.com",
+  # "email": "test@example.com",
+  # "password": "Test1234!",
+  "email": "johndoe@example.com",
   "password": "Test1234!"
 }
 
@@ -32,5 +31,18 @@ Content-Type: application/json
 GET {{baseUrl}}/auth/me
 Authorization: Bearer {{accessToken}}
 
-### POST Logout /auth/logout
+### POST Logout Profile /auth/logout
 POST {{baseUrl}}/auth/logout
+
+### DELETE Delete Profile /auth/me
+DELETE {{baseUrl}}/auth/me
+
+### PATCH Update Profile /auth/me
+PATCH {{baseUrl}}/auth/me
+Content-Type: application/json
+
+{
+  "username": "Fred",
+  "last_name": "Dupont",
+  "first_name": "Jean"
+}

@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser } from "../controllers/auth.controller.ts"
+import { getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser, deleteCurrentUser, updateCurrentUser } from "../controllers/auth.controller.ts"
+import {  isAuth } from "../middlewares/isAuth.middleware.ts";
 import { allowRoles } from "../middlewares/allow-roles.middleware.ts";
 
 export const router = Router();
 
 router.post("/auth/register", registerUser);
-router.post("/auth/login", loginUser);
+router.post("/auth/login", isAuth, loginUser);
 router.post("/auth/refresh", refreshAccessToken);
-router.post("/auth/logout", logoutUser);
-router.get("/auth/me", allowRoles(["user", "admin"]), getCurrentUser);
+router.post("/auth/logout", isAuth, allowRoles(["user"]), logoutUser);
+router.get("/auth/me", isAuth, allowRoles(["user", "admin"]), getCurrentUser);
+router.delete("/auth/me", isAuth, allowRoles(["user", "admin"]), deleteCurrentUser);
+router.patch("/auth/me", isAuth, allowRoles(["user", "admin"]), updateCurrentUser);

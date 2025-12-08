@@ -32,7 +32,7 @@ docker compose -p blablabook -f docker-compose.yml --env-file .env.docker up -d
 
 Fermer le container db : 
 ```bash
-docker compose -f docker-compose.yml --env-file .env.docker down
+docker compose -p blablabook -f docker-compose.yml --env-file .env.docker down
 ```
 
 ---

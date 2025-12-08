@@ -3,7 +3,6 @@ import z from "zod";
 import { HttpError } from "../lib/error.ts";
 
 // Global error handling middleware
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function globalErrorHandler(error: Error, req: Request, res: Response, next: NextFunction) {
   
   // Zod validation error
@@ -20,7 +19,7 @@ export async function globalErrorHandler(error: Error, req: Request, res: Respon
     return;
   }
 
-  // Other unknown errors (e.g. DB down)
+  // Other unknown errors
   console.error(error);
   res.status(500).json({ error: "Unexpected server error" });
 }

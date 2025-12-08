@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { extractAccessTokenFromRequest, decodeJWT } from "../lib/token.ts";
 import { attemptRefresh } from "../lib/auth.ts";
 
-export async function ensureAuthenticated(error: Error,  req: Request, res: Response, next: NextFunction) {
+export async function isAuth(req: Request, res: Response, next: NextFunction) {
   try {
     // Try access token
     const token = extractAccessTokenFromRequest(req);
@@ -13,7 +13,7 @@ export async function ensureAuthenticated(error: Error,  req: Request, res: Resp
     return next();
 
   } catch (error) {
-    // Type guard pour error
+    // Type guard for error
     const errorMessage = error instanceof Error ? error.message : String(error);
     
     // AccessToken expired → try refresh
@@ -24,7 +24,7 @@ export async function ensureAuthenticated(error: Error,  req: Request, res: Resp
 
     // Attempt silent refresh
     try {
-      const { accessToken, user } = await attemptRefresh(req, res);
+      const { accessToken } = await attemptRefresh(req, res);
 
       const { userId, userRole } = decodeJWT(accessToken);
 
