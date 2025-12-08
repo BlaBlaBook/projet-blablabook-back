@@ -5,15 +5,22 @@ import { ConflictError, NotFoundError } from "../lib/error.ts";
 import { createBookSchema, updateBookSchema } from "../schemas/books.schema.ts";
 
 export async function getAllBooks(req: Request, res: Response) {
-  // Fetch all books with their authors and genres
+  // On récupère l'ID de l'utilisateur connecté (via le middleware getUser)
+  const userId = req.userId;
+
+  // Fetch all books avec auteurs, genres et éventuellement le reading_status de l'utilisateur
   const books = await prisma.books.findMany({
     include: {
-      authors: { include: { author: true } }, // include author details
-      genres: { include: { genre: true } },   // include genre details
+      authors: { include: { author: true } },
+      genres: { include: { genre: true } },
+      userRecords: userId ? { 
+        where: { user_id: userId }, // filtre sur l'utilisateur connecté
+        select: { reading_status: true } 
+      } : false, // si pas connecté, ne récupère pas les records
     },
   });
 
-  // Format books to hide pivot tables and only return relevant data
+  // Formatage des données
   const formattedBooks = books.map((b) => ({
     id: b.id,
     isbn: b.isbn,
@@ -32,6 +39,7 @@ export async function getAllBooks(req: Request, res: Response) {
       id: bg.genre.id,
       category: bg.genre.category,
     })),
+    reading_status: b.userRecords?.[0]?.reading_status ?? null, // null si pas connecté ou pas de record
     created_at: b.created_at,
     updated_at: b.updated_at,
   }));
