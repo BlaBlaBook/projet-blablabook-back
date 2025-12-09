@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser, deleteCurrentUser, updateCurrentUser } from "../controllers/auth.controller.ts"
-import {  isAuth } from "../middlewares/isAuth.middleware.ts";
+import { isAuth } from "../middlewares/isAuth.middleware.ts";
 
 export const router = Router();
 

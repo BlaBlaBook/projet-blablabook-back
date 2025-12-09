@@ -1,0 +1,27 @@
+## Rest Client Test file
+@baseUrl=http://localhost:3000/api
+
+@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NmEwZTBkZi02OTllLTQ0OWEtYjJmZi0wMjVmYzdmYWI1ODciLCJ1c2VyUm9sZSI6ImFkbWluIiwiaWF0IjoxNzY1Mjg5NzQyLCJleHAiOjE3NjUyOTMzNDJ9.Fxw8pMbysKRlGiZL7Ngc2LrNaxyvQD_8hbXEdn5UMPg
+
+### GET /health
+GET {{baseUrl}}/health
+
+### POST Login /auth/login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+### GET User Profile (Protected) /auth/me
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{accessToken}}
+
+### GET /admin/users
+GET {{baseUrl}}/admin/users
+
+### DELETE /admin/users/:userId
+DELETE {{baseUrl}}/admin/users/281124a8-bebf-4005-8080-6f9f825f59f3
+Authorization: Bearer {{accessToken}}
