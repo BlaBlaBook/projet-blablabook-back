@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "====For production====": "",
-    "start": "node build/index.js",
+    "start": "node dist/index.js",
     "build": "tsc",
     "====For development====": "",
     "dev": "node --watch index.ts",
