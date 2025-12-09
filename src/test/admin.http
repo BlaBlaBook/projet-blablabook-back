@@ -1,0 +1,17 @@
+## Rest Client Test file
+@baseUrl=http://localhost:3000/api
+
+### GET /health
+GET {{baseUrl}}/health
+
+### POST Login /auth/login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+### GET /admin/users
+GET {{baseUrl}}/admin/users

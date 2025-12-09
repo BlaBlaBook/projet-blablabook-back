@@ -3,18 +3,8 @@ import z from "zod";
 import { prisma } from "../models/index.ts";
 import type { Request, Response } from "express";
 import { passwordValidationSchema } from "../lib/utils.ts";
-import {
-	BadRequestError,
-	ConflictError,
-	NotFoundError,
-	UnauthorizedError,
-} from "../lib/error.ts";
-import {
-	ACCESS_TOKEN_DURATION_IN_MS,
-	generateAccessToken,
-	generateRefreshToken,
-	REFRESH_TOKEN_DURATION_IN_MS,
-} from "../lib/token.ts";
+import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "../lib/error.ts";
+import { ACCESS_TOKEN_DURATION_IN_MS, generateAccessToken, generateRefreshToken, REFRESH_TOKEN_DURATION_IN_MS } from "../lib/token.ts";
 
 export async function registerUser(req: Request, res: Response) {
 	// Validate request body
