@@ -5,7 +5,7 @@ import { getUser } from "../middlewares/getUser.ts";
 export const router = Router();
 
 router.get("/books", getUser, getAllBooks);
-router.get("/books/:id", getBookById);
+router.get("/books/:id", getUser, getBookById);
 router.post("/books", createBook);
 router.patch("/books/:id", updateBook);
 router.delete("/books/:id", deleteBook);
