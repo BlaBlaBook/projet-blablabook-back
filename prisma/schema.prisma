@@ -12,7 +12,7 @@ datasource db {
 // ============================================
 enum user_role {
   admin
-  user
+  user 
 }
 
 enum reading_status {
