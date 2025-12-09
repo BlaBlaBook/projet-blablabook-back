@@ -6,7 +6,6 @@ export const router = Router();
 
 router.post("/auth/register", registerUser);
 router.post("/auth/login", loginUser);
-router.post("/auth/login", loginUser);
 router.post("/auth/refresh", refreshAccessToken);
 router.post("/auth/logout", isAuth, logoutUser);
 router.get("/auth/me", isAuth, getCurrentUser);

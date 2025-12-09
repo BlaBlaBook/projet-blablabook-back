@@ -10,9 +10,7 @@ Content-Type: application/json
 
 {
   "email": "admin@example.com",
-  "username": "admin",
-  "password": "adminPassword",
-  "role": "admin"
+  "password": "Admin123!"
 }
 
 ### GET /admin/users
