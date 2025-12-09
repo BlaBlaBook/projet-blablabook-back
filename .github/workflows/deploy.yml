@@ -1,0 +1,82 @@
+name: Deploy Blablabook API
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+
+    steps:
+      # 1️⃣ Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2️⃣ Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 3️⃣ Build and push the Docker image
+      - name: Build and push Docker image
+        run: |
+          docker build -f Dockerfile.prod -t blablabook-api:latest .
+          docker tag blablabook-api:latest ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:latest
+
+      # 4️⃣ SSH deploy to server with safe migration (internal port)
+      - name: SSH deploy to server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /srv/blablabook
+
+            echo "Pulling latest image..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:latest
+
+            # Backup current container
+            echo "Backing up current container..."
+            docker tag blablabook-api blablabook-api:backup || true
+
+            # Run migrations in a temporary container
+            echo "Running migrations..."
+            if docker run --rm \
+                -e DATABASE_URL='${{ secrets.DATABASE_URL }}' \
+                ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:latest npx prisma migrate deploy; then
+              
+              echo "Migrations succeeded. Restarting API..."
+
+              # Stop and remove old container
+              docker stop blablabook-api || true
+              docker rm blablabook-api || true
+
+              # Start new container on localhost only
+              docker run -d \
+                --name blablabook-api \
+                -p 127.0.0.1:${{ secrets.PORT }}:${{ secrets.PORT }} \
+                -e PORT=${{ secrets.PORT }} \
+                -e ALLOWED_ORIGINS='${{ secrets.ALLOWED_ORIGINS }}' \
+                -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+                -e DATABASE_URL='${{ secrets.DATABASE_URL }}' \
+                -e NODE_ENV='${{ secrets.NODE_ENV }}' \
+                ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:latest
+
+              # Clean up old images and builder cache
+              docker image prune -f
+              docker builder prune
+
+              echo "Deployment complete!"
+
+            else
+              echo "❌ Migrations failed! Keeping old container running."
+              exit 1
+            fi
