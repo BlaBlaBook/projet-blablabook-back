@@ -10,8 +10,8 @@ import { config } from "../../config.ts";
  */
 export const getUser = (req: Request, res: Response, next: NextFunction) => {
   const token = req.cookies?.accessToken; // Read the "accessToken" cookie
-  if (!token) return next(); // User not logged in
 
+  if (!token) return next(); // User not logged in
   try {
     const payload = jwt.verify(token, config.jwtSecret) as JwtPayload;
     req.userId = payload.userId as string;
