@@ -54,6 +54,53 @@ export async function getUserLibraryBooks(req: Request, res: Response) {
   res.json(formattedBooks);
 }
 
+export async function getUserLibraryBookById(req: Request, res: Response) {
+  const userId = req.userId!; // garanti par isAuth
+  const bookId = await parseIdFromParams(req.params.bookId);
+
+  // chercher l'enregistrement du livre pour cet utilisateur
+  const record = await prisma.user_book_records.findFirst({
+    where: { user_id: userId, book_id: bookId },
+    include: {
+      book: {
+        include: {
+          authors: { include: { author: true } },
+          genres: { include: { genre: true } },
+        },
+      },
+    },
+  });
+
+  if (!record) throw new NotFoundError("Book not found in user's library");
+
+  const book = record.book;
+
+  const formattedBook = {
+    id: book.id,
+    isbn: book.isbn,
+    title: book.title,
+    year: book.year,
+    language: book.language,
+    pages: book.pages,
+    image_url: book.image_url,
+    authors: book.authors.map((ba) => ({
+      id: ba.author.id,
+      first_name: ba.author.first_name,
+      last_name: ba.author.last_name,
+    })),
+    genres: book.genres.map((bg) => ({
+      id: bg.genre.id,
+      category: bg.genre.category,
+    })),
+    reading_status: record.reading_status,
+    created_at: book.created_at,
+    updated_at: book.updated_at,
+  };
+
+  res.json(formattedBook);
+}
+
+
 export async function addBookToUserLibrary(req: Request, res: Response) {
   const userId = req.userId!;
 
