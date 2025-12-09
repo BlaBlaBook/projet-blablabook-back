@@ -3,8 +3,18 @@ import z from "zod";
 import { prisma } from "../models/index.ts";
 import type { Request, Response } from "express";
 import { passwordValidationSchema } from "../lib/utils.ts";
-import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "../lib/error.ts";
-import { ACCESS_TOKEN_DURATION_IN_MS, generateAccessToken, generateRefreshToken, REFRESH_TOKEN_DURATION_IN_MS } from "../lib/token.ts";
+import {
+	BadRequestError,
+	ConflictError,
+	NotFoundError,
+	UnauthorizedError,
+} from "../lib/error.ts";
+import {
+	ACCESS_TOKEN_DURATION_IN_MS,
+	generateAccessToken,
+	generateRefreshToken,
+	REFRESH_TOKEN_DURATION_IN_MS,
+} from "../lib/token.ts";
 
 export async function registerUser(req: Request, res: Response) {
 	// Validate request body
@@ -162,6 +172,9 @@ export async function updateCurrentUser(req: Request, res: Response) {
 			throw new ConflictError("Email already taken");
 		}
 	}
+
+	// ========= ⚠️ NEEDS TO CHECK CURRENT PASSWORD ⚠️ =========
+
 	// If password is being updated, check if it matches confirmPassword
 	let hashedPassword: string | undefined = undefined;
 	if (password || confirmPassword) {
@@ -189,7 +202,12 @@ export async function updateCurrentUser(req: Request, res: Response) {
 export async function deleteCurrentUser(req: Request, res: Response) {
 	const userId = req.userId;
 	await prisma.users.delete({ where: { id: userId } });
-	res.status(204).send();
+
+	// Clear auth cookies
+	res.clearCookie("accessToken");
+	res.clearCookie("refreshToken");
+
+	res.status(200).json({ message: "User deleted" });
 }
 
 export function setTokensInCookies(
