@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getAllUsers, deleteUserById } from "../controllers/admin.controller.ts"
-import {  isAuth } from "../middlewares/isAuth.middleware.ts";
+import { isAuth } from "../middlewares/isAuth.middleware.ts";
 import { isAdmin } from "../middlewares/isAdmin.middleware.ts";
 
 export const router = Router();

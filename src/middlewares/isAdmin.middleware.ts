@@ -2,15 +2,14 @@ import type { Request, Response, NextFunction } from "express";
 import { ForbiddenError } from "../lib/error.ts";
 import { extractAccessTokenFromRequest, decodeJWT } from "../lib/token.ts";
 
-export function isAdmin() {
-  return (req: Request, res: Response, next: NextFunction) => {
+export async function isAdmin(req: Request, res: Response, next: NextFunction) {
     try {
 
-      const accessToken = extractAccessTokenFromRequest(req);
+      const accessToken = await extractAccessTokenFromRequest(req);
 
-      const { userId, userRole } = decodeJWT(accessToken);
+      const { userId, userRole } = await decodeJWT(accessToken);
 
-      if (userRole !== "admin") {
+      if (userRole!== "admin") {
         throw new ForbiddenError(`You must be admin to access this route`);
       }
 
@@ -22,4 +21,3 @@ export function isAdmin() {
       next(err);
     }
   };
-}
