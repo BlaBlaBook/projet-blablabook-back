@@ -1,5 +1,5 @@
 ## Rest Client Test file
-@baseUrl=http://localhost:3000/api
+@baseUrl=http://localhost:4000/api
 
 @accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NmEwZTBkZi02OTllLTQ0OWEtYjJmZi0wMjVmYzdmYWI1ODciLCJ1c2VyUm9sZSI6ImFkbWluIiwiaWF0IjoxNzY1Mjg5NzQyLCJleHAiOjE3NjUyOTMzNDJ9.Fxw8pMbysKRlGiZL7Ngc2LrNaxyvQD_8hbXEdn5UMPg
 
