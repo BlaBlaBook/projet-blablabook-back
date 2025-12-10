@@ -6,6 +6,7 @@ import { router as authorsRouter } from "../routers/authors.routes.ts";
 import { router as genresRouter } from "../routers/genres.router.ts";
 import { router as userLibraryRouter } from "../routers/userLibrary.router.ts";
 import { router as adminRouter } from "../routers/admin.router.ts";
+import { router as contactRouter } from "../routers/contact.routes.ts";
 
 export const router = Router();
 
@@ -17,3 +18,4 @@ router.use(authRouter);
 router.use(authorsRouter);
 router.use(genresRouter);
 router.use(userLibraryRouter);
+router.use(contactRouter);

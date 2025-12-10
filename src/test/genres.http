@@ -1,7 +1,7 @@
-@baseUrl=http://localhost:3000
+@baseUrl=http://localhost:4000/api
 
-### GET /api/genres
-GET {{baseUrl}}/api/genres
+### GET /genres
+GET {{baseUrl}}/genres
 
-### DELETE /api/genres/1
-DELETE {{baseUrl}}/api/genres/d14807ac-a2d8-435e-b32b-e4880acc8781
+### DELETE /genres/1
+DELETE {{baseUrl}}/genres/d14807ac-a2d8-435e-b32b-e4880acc8781

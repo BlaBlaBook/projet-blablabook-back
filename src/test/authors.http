@@ -1,7 +1,7 @@
-@baseUrl=http://localhost:3000
+@baseUrl=http://localhost:4000/api
 
-### GET /api/authors
-GET {{baseUrl}}/api/authors
+### GET /authors
+GET {{baseUrl}}/authors
 
-### DELETE /api/authors/1
-DELETE {{baseUrl}}/api/authors/023b8cd3-501d-4f29-9564-42300c88c941
+### DELETE /authors/1
+DELETE {{baseUrl}}/authors/023b8cd3-501d-4f29-9564-42300c88c941

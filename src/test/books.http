@@ -1,13 +1,13 @@
-@baseUrl=http://localhost:3000
+@baseUrl=http://localhost:4000/api
 
-### GET /api/books
-GET {{baseUrl}}/api/books
+### GET /books
+GET {{baseUrl}}/books
 
-### GET /api/books/:id
-GET {{baseUrl}}/api/books/e6b8f93c-2a10-4f13-beb8-01ec8365c36c
+### GET /books/:id
+GET {{baseUrl}}/books/e6b8f93c-2a10-4f13-beb8-01ec8365c36c
 
-### POST /api/books
-POST {{baseUrl}}/api/books
+### POST /books
+POST {{baseUrl}}/books
 Content-Type: application/json
 
 {
@@ -32,8 +32,8 @@ Content-Type: application/json
 }
 
 
-### PATCH /api/books/:id
-PATCH {{baseUrl}}/api/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
+### PATCH /books/:id
+PATCH {{baseUrl}}/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
 Content-Type: application/json  
 
 {
@@ -41,5 +41,5 @@ Content-Type: application/json
   "pages": 350
 }
 
-### DELETE /api/books/:id
-DELETE {{baseUrl}}/api/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
+### DELETE /books/:id
+DELETE {{baseUrl}}/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
