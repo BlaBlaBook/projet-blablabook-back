@@ -1,7 +1,7 @@
 import z from "zod";
 
 export const bookBaseSchema = z.object({
-  isbn: z.string().min(13).max(17),
+  isbn: z.string().min(10).max(13),
   title: z.string().min(1).max(255),
   year: z.number().int(),
   summary: z.string().min(1),

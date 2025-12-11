@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { createBook, deleteBook, getAllBooks, getBookById, updateBook } from "../controllers/books.controller.ts";
 import { getUser } from "../middlewares/getUser.ts";
+import { searchGoogleBooks } from "../controllers/booksSearch.controller.ts";
 
 export const router = Router();
 
 router.get("/books", getUser, getAllBooks);
+router.get("/books/lookup", searchGoogleBooks);
 router.get("/books/:id", getUser, getBookById);
 router.post("/books", createBook);
 router.patch("/books/:id", updateBook);
