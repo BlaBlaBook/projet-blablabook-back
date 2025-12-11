@@ -1,12 +1,32 @@
-@baseUrl=http://localhost:4000/api
+@baseUrl = http://localhost:4000/api
 
-### GET /books
+### 🔍 GET /books (tous les livres)
 GET {{baseUrl}}/books
 
-### GET /books/:id
-GET {{baseUrl}}/books/e6b8f93c-2a10-4f13-beb8-01ec8365c36c
+### 🔍 GET /books (pagination)
+GET {{baseUrl}}/books?limit=10&offset=5
 
-### POST /books
+### 🔍 GET /books (filtrer par auteur)
+GET {{baseUrl}}/books?authorId=581a86e2-d0b4-4060-9b7f-d72d1cdc4209
+
+### 🔍 GET /books (filtrer par genre)
+GET {{baseUrl}}/books?genreId=7febda53-af80-4e04-8adc-164826534121
+
+### 🔍 GET /books (filtre année min-max)
+GET {{baseUrl}}/books?yearMin=2009&yearMax=2011
+
+### 🔍 GET /books (search bar — titre)
+GET {{baseUrl}}/books?search=harry
+
+### 🔍 GET /books (filtre combiné)
+GET {{baseUrl}}/books?authorId=581a86e2-d0b4-4060-9b7f-d72d1cdc4209&genreId=c4bd10b2-3ef1-45e7-9222-29862a3863fe&yearMin=1980&yearMax=2020&search=ready&limit=10&offset=0
+
+
+### 📘 GET /books/:id (un livre)
+GET {{baseUrl}}/books/3d1726c3-5138-44f3-ba48-4da844fe1260
+
+
+### ➕ POST /books (créer un livre)
 POST {{baseUrl}}/books
 Content-Type: application/json
 
@@ -32,14 +52,15 @@ Content-Type: application/json
 }
 
 
-### PATCH /books/:id
+### ✏️ PATCH /books/:id (mettre à jour un livre)
 PATCH {{baseUrl}}/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
-Content-Type: application/json  
+Content-Type: application/json
 
 {
   "title": "Mon Nouveau Livre",
   "pages": 350
 }
 
-### DELETE /books/:id
+
+### ❌ DELETE /books/:id (supprimer un livre)
 DELETE {{baseUrl}}/books/c46cfede-5ab8-4aae-a8d8-e9aecded20b1
