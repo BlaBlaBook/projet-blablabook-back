@@ -1,0 +1,13 @@
+@baseUrl=http://localhost:3000/api
+
+### Recherche par titre ou mot clé
+GET {{baseUrl}}/books/lookup?q=Harry+Potter+et+la+Coupe+de+feu
+Accept: application/json
+
+### Recherche par ISBN
+GET {{baseUrl}}/books/lookup?isbn=0307277674
+Accept: application/json
+
+### Cas d'erreur : aucun paramètre
+GET {{baseUrl}}/books/lookup/
+Accept: application/json
