@@ -45,7 +45,9 @@ jobs:
 
             # Backup current container
             echo "Backing up current container..."
-            docker tag ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:backup || true
+            docker tag ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:latest \
+                      ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:backup
+
 
             # Run migrations in a temporary container
             echo "Running migrations..."
@@ -60,7 +62,7 @@ jobs:
               docker rm blablabook-api || true
 
               # Start new container on localhost only
-              docker run -d \
+              docker run -d --restart unless-stopped \
                 --name blablabook-api \
                 -p 127.0.0.1:${{ secrets.PORT }}:${{ secrets.PORT }} \
                 -e PORT=${{ secrets.PORT }} \
@@ -68,11 +70,15 @@ jobs:
                 -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
                 -e DATABASE_URL='${{ secrets.DATABASE_URL }}' \
                 -e NODE_ENV='${{ secrets.NODE_ENV }}' \
+                -e RESEND_API_KEY='${{ secrets.RESEND_API_KEY }}' \
+                -e RESEND_DOMAIN_NAME='${{ secrets.RESEND_DOMAIN_NAME }}' \
+                -e RESEND_EMAIL_RECEIVER='${{ secrets.RESEND_EMAIL_RECEIVER }}' \
+                -e GOOGLE_BOOKS_API_KEY='${{ secrets.GOOGLE_BOOKS_API_KEY }}' \
                 ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:latest
 
               # Clean up old images and builder cache
               docker image prune -f
-              docker builder prune
+              docker builder prune -f
 
               echo "Deployment complete!"
 
