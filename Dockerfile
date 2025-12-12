@@ -14,11 +14,13 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Generate Prisma client before building TypeScript
+RUN npx prisma generate
+
 # Build TypeScript
 RUN npm run build
 
-# Generate Prisma client and run migrations
-RUN npx prisma generate
+# Run migrations (optional if needed at runtime)
 RUN npx prisma migrate deploy
 
 # Expose API port
