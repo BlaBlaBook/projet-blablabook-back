@@ -19,7 +19,7 @@ export async function searchGoogleBooks(req: Request, res: Response) {
   // Build search query: prefix with "isbn:" for ISBN search, otherwise use keyword
   const searchQuery = isbn
     ? `isbn:${encodeURIComponent(isbn)}`
-    : encodeURIComponent(q!);
+    : encodeURIComponent(q!).replace(/%20/g, "+");
 
   // Construct the Google Books API URL
   const url = `https://www.googleapis.com/books/v1/volumes?q=${searchQuery}&key=${apiKey}`;
@@ -27,54 +27,66 @@ export async function searchGoogleBooks(req: Request, res: Response) {
   try {
     // Call the Google Books API
     const response = await fetch(url);
+    if (!response.ok) {
+      console.error("Google Books fetch error:", response.status, await response.text());
+      return res.status(500).json({ message: "Erreur Google Books" });
+    }
+
     const data: GoogleBooksAPIResponse = await response.json();
+    console.log(`Nombre de résultats Google reçus : ${data.items?.length ?? 0}`);
 
     // Transform Google Books results into CreateBookInput format
     const books: CreateBookInput[] = (data.items ?? []).map((item: GoogleBookItem) => {
-      const info = item.volumeInfo;
+        const info = item.volumeInfo;
 
       // Extract ISBN (prioritize ISBN_13 over ISBN_10)
-      const isbnValue =
-        info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier
-        ?? info.industryIdentifiers?.find(id => id.type === "ISBN_10")?.identifier;
+        const isbnValue =
+          info.industryIdentifiers?.find(id => id.type === "ISBN_13")?.identifier
+          ?? info.industryIdentifiers?.find(id => id.type === "ISBN_10")?.identifier;
 
       // Skip books without ISBN
-      if (!isbnValue) return null;
+        if (!isbnValue) return null;
 
       // Extract year from publication date
-      let yearNum = 0;
-      if (info.publishedDate) {
-        const yearMatch = info.publishedDate.match(/\d{4}/);
-        if (yearMatch) yearNum = parseInt(yearMatch[0], 10);
-      }
+        let yearNum = 0;
+        if (info.publishedDate) {
+          const yearMatch = info.publishedDate.match(/\d{4}/);
+          if (yearMatch) yearNum = parseInt(yearMatch[0], 10);
+        }
 
       // Transform authors array into { first_name, last_name } objects
-      const authors = (info.authors ?? ["Unknown Author"]).map(name => {
-        const [first_name, ...rest] = name.split(" ");
-        return { first_name, last_name: rest.join(" ") || "Unknown" };
-      });
+        const authors = (info.authors ?? ["Unknown Author"]).map(name => {
+          const [first_name, ...rest] = name.split(" ");
+          return { first_name, last_name: rest.join(" ") || "Unknown" };
+        });
 
-      // Transform categories into genres array
-      const genres = (info.categories ?? ["Unknown"]).map(category => ({ category }));
+        // Transform categories into genres array
+        const genres = (info.categories ?? ["Unknown"]).map(category => ({ category: category }));
 
-      // Validate and return book data using schema
-      return createBookSchema.parse({
-        isbn: isbnValue,
-        title: info.title ?? "No title",
-        year: yearNum || 2000,
-        summary: info.description ?? "No description",
-        language: info.language?.slice(0,2) ?? "en",
-        pages: info.pageCount && info.pageCount > 0 ? info.pageCount : 1,
-        image_url: info.imageLinks?.thumbnail?.replace("zoom=1","zoom=2") ?? "https://via.placeholder.com/128x192",
-        authors,
-        genres,
-      });
-    }).filter(Boolean) as CreateBookInput[];
+        // Validate and return book data using schema
+        try {
+          return createBookSchema.parse({
+            isbn: isbnValue,
+            title: info.title ?? "No title",
+            year: yearNum || 2000,
+            summary: info.description ?? "No description",
+            language: info.language?.slice(0,2) ?? "en",
+            pages: info.pageCount && info.pageCount > 0 ? info.pageCount : 1,
+            image_url: info.imageLinks?.thumbnail?.replace("zoom=1","zoom=2") ?? null,
+            authors,
+            genres,
+          });
+        } catch (err) {
+          console.warn("Livre ignoré (ne passe pas le schema) :", info.title);
+          return null;
+        }
+      })
+      .filter(Boolean) as CreateBookInput[];
 
-    // Return the formatted books array
     res.json(books);
+
   } catch (err) {
-    console.error("Google Books API error:", err);
+    console.error("Erreur endpoint Google Books :", err);
     throw err;
   }
 }
