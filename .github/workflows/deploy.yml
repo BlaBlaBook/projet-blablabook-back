@@ -1,7 +1,9 @@
 name: Deploy Blablabook API
 
 on:
-  push: {}            # triggers on any branch for testing
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
