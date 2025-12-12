@@ -1,12 +1,12 @@
 @baseUrl=http://localhost:4000/api
-@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTdmZGM2MS1mM2U2LTQ1YmUtOTg2NS0yMjhiZDRmYTEwMzAiLCJ1c2VyUm9sZSI6InVzZXIiLCJpYXQiOjE3NjUyOTIyMjAsImV4cCI6MTc2NTI5NTgyMH0.g9hLTXZhDKGgQ9aYK3XqbQWmH2aU_5Q3kHZ6w90qIqo
+@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5ZTRjZWMyYi0wODgwLTQ4ZjUtYWQyYy1lNzZkYjM5ZTVlMmUiLCJ1c2VyUm9sZSI6InVzZXIiLCJpYXQiOjE3NjU1Mzc3ODAsImV4cCI6MTc2NTU0MTM4MH0.D5TP9PgLVKROjPxxcos9OKWR3vXVaB72yylAyTFut58
 
 ### GET User Library Books
 GET {{baseUrl}}/users/library
 Cookie: accessToken={{accessToken}}
 
 ### Get User Library Book by ID
-GET {{baseUrl}}/users/library/b0847dbb-6780-4ea9-837a-6a5e682b60b2
+GET {{baseUrl}}/users/library/e1974c5b-0c3c-4d4a-a2aa-0beba43ae242
 Cookie: accessToken={{accessToken}}
 
 ### POST Add Book to User Library
@@ -25,3 +25,12 @@ Content-Type: application/json
 ### DELETE Remove Book from User Library
 DELETE {{baseUrl}}/users/library/796c0d98-dd21-4ed5-82b8-f59e2a7cf750
 Cookie: accessToken={{accessToken}}
+
+### PATCH Update Book Rating
+PATCH {{baseUrl}}/users/library/e1974c5b-0c3c-4d4a-a2aa-0beba43ae242/rating
+Cookie: accessToken={{accessToken}}
+Content-Type: application/json
+
+{
+  "rating": 4
+}

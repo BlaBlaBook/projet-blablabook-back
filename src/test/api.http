@@ -1,6 +1,6 @@
 ## Rest Client Test file
 @baseUrl=http://localhost:4000/api
-@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhMGYyYzEyNC1kNzUyLTQzNTEtYTBjOS05MjE0MzBmMGIxMDkiLCJ1c2VyUm9sZSI6InVzZXIiLCJpYXQiOjE3NjUyNzExMDUsImV4cCI6MTc2NTI3NDcwNX0.19OL5cemYcAzH0hGem4tUPpoPUNGJMRDKW17x1tU0GA
+@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjFkMjFkZi02ZThlLTRlNjktODg4OS05ZjIxNTQyMmIxMmUiLCJ1c2VyUm9sZSI6InVzZXIiLCJpYXQiOjE3NjU1NDIzMDcsImV4cCI6MTc2NTU0NTkwN30.eU_jRiHKoeketEe6JGigC4MNTcimRaVUqmHOP-h1bfg
 ### GET /health
 GET {{baseUrl}}/health
 
@@ -21,8 +21,8 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "test@example.com",
-  "password": "Test1234!"
+  "email": "user@example.com",
+  "password": "User123!"
 }
 
 ### GET User Profile (Protected) /auth/me
