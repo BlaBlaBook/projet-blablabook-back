@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import type { JwtPayload } from "jsonwebtoken";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 import { config } from "../../config.ts";
 import { prisma, type users } from "../models/index.ts";
 import { UnauthorizedError } from "./error.ts";
@@ -9,6 +9,9 @@ import { UnauthorizedError } from "./error.ts";
 export const ACCESS_TOKEN_DURATION_IN_MS = 1 * 60 * 60 * 1000; // 1h
 export const REFRESH_TOKEN_DURATION_IN_MS = 7 * 24 * 60 * 60 * 1000; // 7d
 
+// ----------------------------
+// -------- Decode JWT --------
+// ----------------------------
 export function decodeJWT(accessToken: string): JwtPayload {
   try {
     // Verify & decode
@@ -28,6 +31,9 @@ export function decodeJWT(accessToken: string): JwtPayload {
   }
 }
 
+// ---------------------------------
+// ----- Generate access token -----
+// ---------------------------------
 export function generateAccessToken(user: users) {
   // Create JWT
   const payload = { userId: user.id, userRole: user.role };
@@ -49,6 +55,9 @@ export async function generateRefreshToken(user: users) {
   return refreshToken;
 }
 
+// -----------------------------------
+// -- Extract access token from req --
+// -----------------------------------
 export function extractAccessTokenFromRequest(req: Request) {
   // From header
   const authorizationHeader = req.headers.authorization;
@@ -64,4 +73,29 @@ export function extractAccessTokenFromRequest(req: Request) {
 
   // Not found
   throw new UnauthorizedError("Access token not provided in Authorization headers or Cookies");
+}
+
+// -------------------------------
+// ---- Set tokens in cookies ----
+// -------------------------------
+export function setTokensInCookies(
+	res: Response,
+	accessToken: string,
+	refreshToken: string,
+) {
+	const isProd = process.env.NODE_ENV === "production";
+
+	res.cookie("accessToken", accessToken, {
+		httpOnly: true,
+		maxAge: ACCESS_TOKEN_DURATION_IN_MS, // 1 hour
+		sameSite: isProd ? "none" : "lax", // "none" in prod for cross-site requests
+		secure: isProd, // true in prod, false locally
+	});
+
+	res.cookie("refreshToken", refreshToken, {
+		httpOnly: true,
+		maxAge: REFRESH_TOKEN_DURATION_IN_MS, // 7 days
+		sameSite: isProd ? "none" : "lax",
+		secure: isProd,
+	});
 }
