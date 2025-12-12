@@ -8,19 +8,23 @@ RUN apk add --no-cache bash
 # Copy package.json first for caching
 COPY package.json package-lock.json* ./
 
-# Install all deps (including devDependencies)
+# Install all deps
 RUN npm install
 
 # Copy source code
 COPY . .
 
-# Generate Prisma client before building TypeScript
+# Set build-time environment variable
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
+# Generate Prisma client BEFORE building TypeScript
 RUN npx prisma generate
 
 # Build TypeScript
 RUN npm run build
 
-# Run migrations (optional if needed at runtime)
+# Run migrations (optional at runtime)
 RUN npx prisma migrate deploy
 
 # Expose API port

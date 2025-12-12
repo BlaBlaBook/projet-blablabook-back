@@ -34,6 +34,7 @@ jobs:
           docker buildx build \
             --platform linux/arm64 \
             -f Dockerfile \
+            --build-arg DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:latest \
             --push .
 
