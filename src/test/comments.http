@@ -1,0 +1,32 @@
+@baseUrl = http://localhost:4000/api
+@bookId = e1974c5b-0c3c-4d4a-a2aa-0beba43ae242
+@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5ZTRjZWMyYi0wODgwLTQ4ZjUtYWQyYy1lNzZkYjM5ZTVlMmUiLCJ1c2VyUm9sZSI6InVzZXIiLCJpYXQiOjE3NjU1Mzc3ODAsImV4cCI6MTc2NTU0MTM4MH0.D5TP9PgLVKROjPxxcos9OKWR3vXVaB72yylAyTFut58
+
+### Récupérer tous les commentaires d'un livre
+GET {{baseUrl}}/books/{{bookId}}/comments
+Content-Type: application/json
+
+### Ajouter un commentaire sur un livre (auth via cookie)
+POST {{baseUrl}}/books/{{bookId}}/comments
+Content-Type: application/json
+Cookie: accessToken={{accessToken}}
+
+{
+  "content": "J'adore ce livre !",
+  "parent_id": null
+}
+
+### Ajouter une réponse à un commentaire existant
+POST {{baseUrl}}/books/{{bookId}}/comments
+Content-Type: application/json
+Cookie: accessToken={{accessToken}}
+
+{
+  "content": "Je suis complètement d'accord avec toi !",
+  "parent_id": "89f6d022-5ecc-433d-869e-e6d9e201aaf9"
+}
+
+### Liker un commentaire
+POST {{baseUrl}}/books/{{bookId}}/comments/89f6d022-5ecc-433d-869e-e6d9e201aaf9/like
+Content-Type: application/json
+Cookie: accessToken={{accessToken}}

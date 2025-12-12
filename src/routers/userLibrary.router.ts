@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addBookToUserLibrary, getUserLibraryBooks, changeStatusOfBook, removeBookFromUserLibrary, getUserLibraryBookById } from "../controllers/userLibrary.controller.ts";
+import { addBookToUserLibrary, getUserLibraryBooks, changeStatusOfBook, removeBookFromUserLibrary, getUserLibraryBookById, updateBookRating } from "../controllers/userLibrary.controller.ts";
 import { isAuth } from "../middlewares/isAuth.middleware.ts";
 
 export const router = Router();
@@ -18,3 +18,6 @@ router.patch("/users/library/:bookId", isAuth, changeStatusOfBook);
 
 // Dans ton fichier de routes (ex: userLibrary.routes.ts)
 router.delete("/users/library/:bookId", isAuth, removeBookFromUserLibrary);
+
+// Modifier la note d'un livre dans la bibliothèque
+router.patch("/users/library/:bookId/rating", isAuth, updateBookRating);

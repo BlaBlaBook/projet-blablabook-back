@@ -41,6 +41,7 @@ model books {
   authors     book_author[]
   genres      book_genre[]
   userRecords user_book_records[]
+  comments    comments[]
 
   @@map("books")
 }
@@ -114,6 +115,8 @@ model users {
 
   bookRecords   user_book_records[]
   refreshTokens RefreshToken[]
+  comments      comments[]
+  commentLikes  commentLikes[]
 
   @@map("users")
 }
@@ -124,6 +127,7 @@ model user_book_records {
   reading_status reading_status @default(à_lire)
   user_id        String         @db.Uuid
   book_id        String         @db.Uuid
+  rating         Int?           
   created_at     DateTime       @default(now()) @db.Timestamptz
   updated_at     DateTime       @default(now()) @updatedAt @db.Timestamptz
 
@@ -133,6 +137,7 @@ model user_book_records {
   @@unique([user_id, book_id], name: "user_book_unique")
   @@map("user_book_records")
 }
+
 
 // ---------- REFRESH_TOKEN ----------
 model RefreshToken {
@@ -145,4 +150,39 @@ model RefreshToken {
   user           users          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+// ---------- COMMENTS ----------
+model comments {
+  id         String   @id @default(uuid()) @db.Uuid
+  content    String   @db.Text
+  parent_id  String?  @db.Uuid
+  user_id    String   @db.Uuid
+  book_id    String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  user    users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book    books     @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  parent  comments? @relation("CommentReplies", fields: [parent_id], references: [id])
+  replies comments[] @relation("CommentReplies")
+  likes   commentLikes[]
+
+  @@index([book_id])
+  @@map("comments")
+}
+
+
+// ---------- COMMENT LIKES ----------
+model commentLikes {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  comment_id String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  user    users    @relation(fields: [user_id], references: [id])
+  comment comments @relation(fields: [comment_id], references: [id])
+
+  @@unique([user_id, comment_id])
+  @@map("comment_likes")
 }

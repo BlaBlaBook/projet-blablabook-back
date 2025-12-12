@@ -186,3 +186,28 @@ export async function removeBookFromUserLibrary(req: Request, res: Response) {
     message: "Book removed from library",
   });
 }
+
+export async function updateBookRating(req: Request, res: Response) {
+  const userId = req.userId!;
+  const bookId = req.params.bookId;
+  const { rating } = req.body;
+
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: "La note doit être entre 1 et 5" });
+  }
+
+  const record = await prisma.user_book_records.findFirst({
+    where: { user_id: userId, book_id: bookId },
+  });
+
+  if (!record) {
+    return res.status(404).json({ error: "Livre non trouvé dans votre bibliothèque" });
+  }
+
+  const updatedRecord = await prisma.user_book_records.update({
+    where: { id: record.id },
+    data: { rating },
+  });
+
+  res.json({ message: "Note mise à jour", record: updatedRecord });
+}
