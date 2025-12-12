@@ -4,6 +4,7 @@ import type { booksWhereInput } from "../../generated/prisma/models.ts";
 import { parseIdFromParams } from "../lib/utils.ts";
 import { ConflictError, NotFoundError } from "../lib/error.ts";
 import { createBookSchema, updateBookSchema } from "../schemas/books.schema.ts";
+import { normalizeQueryParam } from "../lib/query.ts";
 
 // ----------------------------
 // ------ GET /api/books ------
@@ -16,10 +17,8 @@ export async function getAllBooks(req: Request, res: Response) {
 	const offset = req.query.offset ? Number(req.query.offset) : 0;
 
 	// Filters sent from frontend
-	const authorId =
-		typeof req.query.authorId === "string" ? req.query.authorId : undefined;
-	const genreId =
-		typeof req.query.genreId === "string" ? req.query.genreId : undefined;
+	const authorIds = normalizeQueryParam(req.query.authorIds);
+	const genreIds = normalizeQueryParam(req.query.genreIds);
 
 	// Years range
 	const yearMin = req.query.yearMin ? Number(req.query.yearMin) : undefined;
@@ -28,20 +27,21 @@ export async function getAllBooks(req: Request, res: Response) {
 	// Search bar (title)
 	const search = req.query.search as string | undefined;
 
+	// Group all filters in an object
 	const where: booksWhereInput = {};
 
-	// Filter by author Id
-	if (authorId) {
+	// Normalise authorIds en tableau de string, pour 0, 1 ou plusieurs auteurs
+
+	// Filtre Prisma
+	if (authorIds.length > 0) {
 		where.authors = {
-			some: { author_id: authorId },
+			some: { author_id: { in: authorIds } },
 		};
 	}
 
 	// Filter by genre Id
-	if (genreId) {
-		where.genres = {
-			some: { genre_id: genreId },
-		};
+	if (genreIds.length > 0) {
+		where.genres = { some: { genre_id: { in: genreIds } } };
 	}
 
 	// Years min/max
@@ -60,7 +60,7 @@ export async function getAllBooks(req: Request, res: Response) {
 		};
 	}
 
-  // Prisma query
+	// Prisma query
 	const books = await prisma.books.findMany({
 		where,
 		skip: offset,
@@ -77,10 +77,10 @@ export async function getAllBooks(req: Request, res: Response) {
 		},
 	});
 
-  // Total count of books returned
+	// Total count of books returned
 	const total = await prisma.books.count({ where });
 
-  // Build res for client
+	// Build res for client
 	const formattedBooks = books.map((b) => ({
 		id: b.id,
 		isbn: b.isbn,
@@ -104,7 +104,7 @@ export async function getAllBooks(req: Request, res: Response) {
 		updated_at: b.updated_at,
 	}));
 
-  // Send res
+	// Send res
 	res.json({
 		total,
 		limit,
@@ -113,7 +113,6 @@ export async function getAllBooks(req: Request, res: Response) {
 		data: formattedBooks,
 	});
 }
-
 
 // --------------------------------
 // ------ GET /api/books/:id ------
@@ -165,7 +164,6 @@ export async function getBookById(req: Request, res: Response) {
 
 	res.json(formattedBook);
 }
-
 
 // -----------------------------
 // ------ POST /api/books ------
@@ -226,7 +224,6 @@ const newBook = await prisma.books.create({
 
   res.status(201).json(formattedBook);
 }
-
 
 // ----------------------------
 // --- PATCH /api/books/:id ---
@@ -373,7 +370,6 @@ export async function updateBook(req: Request, res: Response) {
   res.json(formattedBook);
 }
 
-
 // -----------------------------
 // --- DELETE /api/books/:id ---
 // -----------------------------
@@ -386,7 +382,6 @@ export async function deleteBook(req: Request, res: Response) {
 	await prisma.books.delete({ where: { id: bookId } });
 	res.status(204).send();
 }
-
 
 // ---------------------------
 // --------- helpers ---------
