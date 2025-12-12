@@ -233,7 +233,13 @@ async function main() {
 					book: { connect: { id: book.id } },
 					author: {
 						connectOrCreate: {
-							where: { id: crypto.randomUUID() }, // temporaire
+							where: {
+								first_name_last_name: {
+									// use the unique constraint name
+									first_name,
+									last_name,
+								},
+							},
 							create: { first_name, last_name },
 						},
 					},

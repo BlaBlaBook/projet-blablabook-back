@@ -1,24 +1,36 @@
 import type { Request, Response, NextFunction } from "express";
-import type { JwtPayload } from "jsonwebtoken";
-import jwt from "jsonwebtoken";
-import { config } from "../../config.ts";
+import { extractAccessTokenFromRequest, decodeJWT } from "../lib/token.ts";
+import { attemptRefresh } from "../lib/auth.ts";
+import { UnauthorizedError } from "../lib/error.ts";
 
-/**
- * Middleware to retrieve the authenticated user from the `accessToken` cookie.
- * - If the token is valid → req.userId is set
- * - If no token or invalid token → req.userId stays undefined (user is not authenticated)
- */
-export const getUser = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies?.accessToken; // Read the "accessToken" cookie
-
-  if (!token) return next(); // User not logged in
+export async function getUser(req: Request, res: Response, next: NextFunction) {
   try {
-    const payload = jwt.verify(token, config.jwtSecret) as JwtPayload;
-    req.userId = payload.userId as string;
-  } catch (err) {
-    console.warn("Invalid JWT token:", err);
-    // Continue the request even if the token is invalid
-  }
+    // Try with access token first
+    const token = extractAccessTokenFromRequest(req);
 
-  next();
-};
+    const { userId, userRole } = decodeJWT(token);
+    req.userId = userId;
+    req.userRole = userRole;
+
+    return next();
+  } catch (error) {
+    // If the access token is expired → try refresh, but DO NOT block the request
+    if (error instanceof UnauthorizedError) {
+      try {
+        const { accessToken } = await attemptRefresh(req, res);
+        const { userId, userRole } = decodeJWT(accessToken);
+
+        req.userId = userId;
+        req.userRole = userRole;
+
+        return next();
+      } catch {
+        // Refresh failed → user stays unauthenticated silently
+        return next();
+      }
+    }
+
+    // Any other error (JWT malformed, wrong signature...) → ignore
+    return next();
+  }
+}
