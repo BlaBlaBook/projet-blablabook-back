@@ -76,6 +76,7 @@ jobs:
                 -p 127.0.0.1:${{ secrets.PORT }}:${{ secrets.PORT }} \
                 -e PORT=${{ secrets.PORT }} \
                 -e ALLOWED_ORIGINS='${{ secrets.ALLOWED_ORIGINS }}' \
+                -e FRONTEND_URL='${{ secrets.FRONTEND_URL }}' \
                 -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
                 -e DATABASE_URL='${{ secrets.DATABASE_URL }}' \
                 -e NODE_ENV='${{ secrets.NODE_ENV }}' \
@@ -83,6 +84,8 @@ jobs:
                 -e RESEND_DOMAIN_NAME='${{ secrets.RESEND_DOMAIN_NAME }}' \
                 -e RESEND_EMAIL_RECEIVER='${{ secrets.RESEND_EMAIL_RECEIVER }}' \
                 -e GOOGLE_BOOKS_API_KEY='${{ secrets.GOOGLE_BOOKS_API_KEY }}' \
+                -e GOOGLE_CLIENT_ID='${{ secrets.GOOGLE_CLIENT_ID }}' \
+                -e GOOGLE_CLIENT_SECRET='${{ secrets.GOOGLE_CLIENT_SECRET }}' \
                 ${{ secrets.DOCKERHUB_USERNAME }}/blablabook-api:latest
 
               # Clean up old images and builder cache

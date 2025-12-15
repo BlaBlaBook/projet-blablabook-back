@@ -261,15 +261,6 @@ async function main() {
 				},
 			});
 		}
-
-		// assigner certains livres à l'utilisateur (par exemple tous)
-		await prisma.user_book_records.create({
-			data: {
-				book: { connect: { id: book.id } },
-				user: { connect: { id: user.id } },
-				reading_status: "à lire",
-			},
-		});
 	}
 
 	console.log("✅ Seed complet exécuté correctement");

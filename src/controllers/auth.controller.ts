@@ -5,16 +5,21 @@ import type { Request, Response } from "express";
 import { passwordValidationSchema } from "../lib/utils.ts";
 import {
 	BadRequestError,
-	ConflictError,
 	NotFoundError,
 	ForbiddenError,
+	UnauthorizedError,
 } from "../lib/error.ts";
 import {
 	generateAccessToken,
 	generateRefreshToken,
 	setTokensInCookies,
 } from "../lib/token.ts";
-import { generateDiceBearAvatar, generateRandomAvatarSeed } from "../lib/dicebear.ts";
+import {
+	generateDiceBearAvatar,
+	generateRandomAvatarSeed,
+} from "../lib/dicebear.ts";
+import { googleClient, googleCLientID } from "../lib/googleClient.ts";
+import { checkUniqueUser } from "../lib/auth.ts";
 
 // -----------------------------------
 // ----- POST /api/auth/register -----
@@ -31,12 +36,9 @@ export async function registerUser(req: Request, res: Response) {
 	const { username, email, password, confirmPassword } =
 		await registerUserBodySchema.parseAsync(req.body);
 
-	// Check if email already exists
-	const alreadyExistingUser = await prisma.users.findFirst({
-		where: { email },
-	});
-	if (alreadyExistingUser) {
-		throw new ConflictError("Email already taken");
+	// Check if email or username already exists
+	if (email || username) {
+		await checkUniqueUser(email, username);
 	}
 
 	// Check if password and confirmPassword match
@@ -89,6 +91,14 @@ export async function loginUser(req: Request, res: Response) {
 		throw new BadRequestError("Email and password do not match");
 	}
 
+	// If user created the account with Google and didn't set a password afterward
+	// Send an error if trying to login with credentials
+	if (!user.password) {
+		throw new BadRequestError(
+			"Account created with Google OAuth, needs to add a password to use credentials login.",
+		);
+	}
+
 	// Verify password
 	const isMatching = await argon2.verify(user.password, password);
 	if (!isMatching) {
@@ -106,36 +116,138 @@ export async function loginUser(req: Request, res: Response) {
 }
 
 // ----------------------------------
+// --- POST /api/auth/google --------
+// ----------------------------------
+export async function googleAuth(req: Request, res: Response) {
+	// 1. Validate request body
+	const bodySchema = z.object({
+		code: z.string().min(1),
+	});
+
+	const { code } = await bodySchema.parseAsync(req.body);
+
+	// 2. Exchange code for tokens
+	const { tokens } = await googleClient.getToken({
+		code,
+		redirect_uri: `${process.env.FRONTEND_URL}/auth/google/callback`,
+	});
+	const idToken = tokens.id_token;
+
+	if (!idToken) {
+		throw new BadRequestError("Invalid Google authorization code");
+	}
+
+	// 3. Verify ID token
+	const ticket = await googleClient.verifyIdToken({
+		idToken,
+		audience: googleCLientID,
+	});
+
+	const payload = ticket.getPayload();
+	if (!payload?.email) {
+		console.error("Google login failed: Invalid Google token payload", payload);
+		throw new BadRequestError("Invalid Google token payload");
+	}
+
+	const email = payload.email;
+	const baseUsername =
+		payload.name?.replace(/\s+/g, "").toLowerCase() ?? email.split("@")[0];
+	let username = baseUsername;
+
+	// 4. Find or create user
+	let user = await prisma.users.findUnique({ where: { email } });
+
+	if (!user) {
+		// Only append counter if base username already exists
+		const existingUser = await prisma.users.findUnique({
+			where: { username: baseUsername },
+		});
+		if (existingUser) {
+			let counter = 1;
+			while (
+				await prisma.users.findUnique({
+					where: { username: `${baseUsername}${counter}` },
+				})
+			) {
+				counter++;
+			}
+			username = `${baseUsername}${counter}`;
+		}
+
+		user = await prisma.users.create({
+			data: {
+				email,
+				username,
+				password: null, // Google-authenticated users
+			},
+		});
+	}
+
+	// 5. Generate tokens (same as login)
+	const accessToken = generateAccessToken(user);
+	const refreshToken = await generateRefreshToken(user);
+
+	// 6. Send cookies
+	setTokensInCookies(res, accessToken, refreshToken);
+
+	// 7. Done
+	res.status(200).send();
+}
+
+// ----------------------------------
 // -------- GET /api/auth/me --------
 // ----------------------------------
 export async function getCurrentUser(req: Request, res: Response) {
-	// User ID injected by allowRoles middleware
 	const userId = req.userId;
 
 	// Fetch current authenticated user
 	const user = await prisma.users.findUnique({
 		where: { id: userId },
-		omit: { password: true },
+		select: {
+			id: true,
+			email: true,
+			username: true,
+			created_at: true,
+			updated_at: true,
+			avatar_url: true,
+			avatar_seed: true,
+			password: true, // to check existence (accounts created with google have no password)
+		},
 	});
 
 	if (!user) {
 		throw new NotFoundError("No user associated with this access token");
 	}
 
-	// If user doesn't have an avatar_url, generate one based on their username or custom seed
+	// Determine if the user has a password
+	const hasPassword = Boolean(user.password);
+
+	// If user doesn't have an avatar_url, generate one
+	let finalUser = user;
+
 	if (!user.avatar_url) {
 		const avatarSeed = user.avatar_seed || user.username;
 		const generatedAvatarSvg = generateDiceBearAvatar(avatarSeed);
-		// Update the user with the generated avatar
-		const updatedUser = await prisma.users.update({
+
+		finalUser = await prisma.users.update({
 			where: { id: userId },
-			data: { avatar_url: generatedAvatarSvg },
-			omit: { password: true },
+			data: {
+				avatar_url: generatedAvatarSvg,
+				avatar_seed: user.avatar_seed ?? avatarSeed,
+			},
 		});
-		res.json(updatedUser);
-	} else {
-		res.json(user);
 	}
+
+	// Send user object without password + with hasPassword
+	res.json({
+		id: finalUser.id,
+		email: finalUser.email,
+		username: finalUser.username,
+		avatar_url: finalUser.avatar_url,
+		created_at: finalUser.created_at,
+		updated_at: finalUser.updated_at,
+		hasPassword,
+	});
 }
 
 // -----------------------------------
@@ -157,119 +269,116 @@ export async function logoutUser(req: Request, res: Response) {
 // ------- PATCH /api/auth/me -------
 // ----------------------------------
 export async function updateCurrentUser(req: Request, res: Response) {
-    const userId = req.userId;
+	const userId = req.userId;
 
-    // Schema
-    const updateUserBodySchema = z.object({
-        username: z.string().min(1).optional(),
-        email: z.email().optional(),
-        last_name: z.string().optional(),
-        first_name: z.string().optional(),
-        avatar_url: z.url().optional(),
-        currentPassword: passwordValidationSchema.optional(),
-        newPassword: passwordValidationSchema.optional(),
-        confirmPassword: passwordValidationSchema.optional(),
-    });
+	if (!userId) throw new UnauthorizedError("User id is missing");
 
-    const {
-        username,
-        email,
-        first_name,
-        last_name,
-        avatar_url,
-        currentPassword,
-        newPassword,
-        confirmPassword,
-    } = await updateUserBodySchema.parseAsync(req.body);
+	// Schema
+	const updateUserBodySchema = z.object({
+		username: z.string().min(1).optional(),
+		email: z.email().optional(),
+		last_name: z.string().optional(),
+		first_name: z.string().optional(),
+		avatar_url: z.url().optional(),
+		currentPassword: passwordValidationSchema.optional(),
+		newPassword: passwordValidationSchema.optional(),
+		confirmPassword: passwordValidationSchema.optional(),
+	});
 
-    // Check email uniqueness
-    if (email) {
-        const existingUser = await prisma.users.findFirst({
-            where: { email, id: { not: userId } },
-        });
-        if (existingUser) throw new ConflictError("Email already taken");
-    }
+	const {
+		username,
+		email,
+		first_name,
+		last_name,
+		avatar_url,
+		currentPassword,
+		newPassword,
+		confirmPassword,
+	} = await updateUserBodySchema.parseAsync(req.body);
 
-    // Get user
-    const user = await prisma.users.findUnique({
-        where: { id: userId },
-    });
+	// Check email and username uniqueness
+	if (email || username) {
+		await checkUniqueUser(email, username, userId);
+	}
 
-    if (!user) throw new NotFoundError("Current user not found");
+	// Get user
+	const user = await prisma.users.findUnique({
+		where: { id: userId },
+	});
 
-    let hashedPassword: string | undefined;
+	if (!user) throw new NotFoundError("Current user not found");
 
-    // Password update logic
-    if (currentPassword || newPassword || confirmPassword) {
-        // Must provide all fields
-        if (!currentPassword || !newPassword || !confirmPassword) {
-            throw new BadRequestError("Please fill current, new, and confirm password");
-        }
+	let hashedPassword: string | undefined;
 
-        // Check current password
-        const match = await argon2.verify(user.password, currentPassword);
-        if (!match) {
-            throw new ForbiddenError("Current password is incorrect");
-        }
+	// Password update / creation logic
+	if (newPassword && confirmPassword) {
+		// If user has a password, currentPassword is required
+		if (user.password) {
+			if (!currentPassword)
+				throw new BadRequestError("Current password is required");
+			const match = await argon2.verify(user.password, currentPassword);
+			if (!match) throw new ForbiddenError("Current password is incorrect");
+		}
 
-        // Check confirm
-        if (newPassword !== confirmPassword) {
-            throw new BadRequestError("New password and confirm password do not match");
-        }
+		// Confirm check
+		if (newPassword !== confirmPassword) {
+			throw new BadRequestError(
+				"New password and confirm password do not match",
+			);
+		}
 
-        // Hash new pwd
-        hashedPassword = await argon2.hash(newPassword);
-    }
+		// Hash new pwd
+		hashedPassword = await argon2.hash(newPassword);
+	}
 
-    // Update
-    const updatedUser = await prisma.users.update({
-        where: { id: userId },
-        data: {
-            username,
-            email,
-            first_name,
-            last_name,
-            avatar_url,
-            password: hashedPassword,
-        },
-        omit: { password: true },
-    });
+	// Update
+	const updatedUser = await prisma.users.update({
+		where: { id: userId },
+		data: {
+			username,
+			email,
+			first_name,
+			last_name,
+			avatar_url,
+			password: hashedPassword,
+		},
+		omit: { password: true },
+	});
 
-    return res.json(updatedUser);
-};
+	return res.json(updatedUser);
+}
 
 // ----------------------------------
 // ----- POST /api/auth/avatar ------
 // ----------------------------------
 export async function regenerateAvatar(req: Request, res: Response) {
-	console.log('🎨 Regenerate avatar endpoint called');
+	console.log("🎨 Regenerate avatar endpoint called");
 	const userId = req.userId;
-	
+
 	try {
-		console.log('Generating new avatar for user:', userId);
+		console.log("Generating new avatar for user:", userId);
 		// Générer un nouveau seed aléatoire
 		const newSeed = generateRandomAvatarSeed();
-		
+
 		// Générer le nouvel avatar (utilise la collection par défaut)
 		const newAvatar = generateDiceBearAvatar(newSeed);
-		
+
 		// Mettre à jour l'utilisateur
 		const updatedUser = await prisma.users.update({
 			where: { id: userId },
 			data: {
 				avatar_url: newAvatar,
-				avatar_seed: newSeed
+				avatar_seed: newSeed,
 			},
-			omit: { password: true }
+			omit: { password: true },
 		});
-		
+
 		res.json({
 			message: "Avatar regenerated successfully",
-			avatar_url: updatedUser.avatar_url
+			avatar_url: updatedUser.avatar_url,
 		});
-		
 	} catch (error) {
-		console.error('Error regenerating avatar:', error);
+		console.error("Error regenerating avatar:", error);
 		throw new Error("Failed to regenerate avatar");
 	}
 }
