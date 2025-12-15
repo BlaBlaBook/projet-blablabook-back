@@ -5,9 +5,9 @@ import type { Request, Response } from "express";
 import { passwordValidationSchema } from "../lib/utils.ts";
 import {
 	BadRequestError,
-	ConflictError,
 	NotFoundError,
 	ForbiddenError,
+	UnauthorizedError,
 } from "../lib/error.ts";
 import {
 	generateAccessToken,
@@ -19,6 +19,7 @@ import {
 	generateRandomAvatarSeed,
 } from "../lib/dicebear.ts";
 import { googleClient, googleCLientID } from "../lib/googleClient.ts";
+import { checkUniqueUser } from "../lib/auth.ts";
 
 // -----------------------------------
 // ----- POST /api/auth/register -----
@@ -35,12 +36,9 @@ export async function registerUser(req: Request, res: Response) {
 	const { username, email, password, confirmPassword } =
 		await registerUserBodySchema.parseAsync(req.body);
 
-	// Check if email already exists
-	const alreadyExistingUser = await prisma.users.findFirst({
-		where: { email },
-	});
-	if (alreadyExistingUser) {
-		throw new ConflictError("Email already taken");
+	// Check if email or username already exists
+	if (email || username) {
+		await checkUniqueUser(email, username);
 	}
 
 	// Check if password and confirmPassword match
@@ -273,6 +271,8 @@ export async function logoutUser(req: Request, res: Response) {
 export async function updateCurrentUser(req: Request, res: Response) {
 	const userId = req.userId;
 
+	if (!userId) throw new UnauthorizedError("User id is missing");
+
 	// Schema
 	const updateUserBodySchema = z.object({
 		username: z.string().min(1).optional(),
@@ -296,12 +296,9 @@ export async function updateCurrentUser(req: Request, res: Response) {
 		confirmPassword,
 	} = await updateUserBodySchema.parseAsync(req.body);
 
-	// Check email uniqueness
-	if (email) {
-		const existingUser = await prisma.users.findFirst({
-			where: { email, id: { not: userId } },
-		});
-		if (existingUser) throw new ConflictError("Email already taken");
+	// Check email and username uniqueness
+	if (email || username) {
+		await checkUniqueUser(email, username, userId);
 	}
 
 	// Get user
