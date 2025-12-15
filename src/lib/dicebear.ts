@@ -7,100 +7,43 @@ import * as bottts from '@dicebear/bottts';
 // Définir un type pour les collections valides
 type CollectionName = 'avataaars' | 'adventurer' | 'big-smile' | 'bottts';
 
-// Configuration centrale: tous les utilisateurs utilisent cette collection
-const DEFAULT_COLLECTION: CollectionName = 'bottts'; // Changez ici pour modifier le style pour tous
+// Collection par défaut
+const DEFAULT_COLLECTION: CollectionName = 'bottts';
 
-// Fonction générique pour générer un avatar avec une collection spécifique
+// Map pour simplifier la sélection
+const COLLECTIONS: Record<CollectionName, any> = {
+  avataaars,
+  adventurer,
+  'big-smile': bigSmile,
+  bottts,
+};
+
+/**
+ * Génère un avatar DiceBear selon la collection par défaut
+ * @param seed - Seed unique pour un avatar déterministe
+ * @returns SVG string
+ */
 export function generateDiceBearAvatar(seed: string): string {
   try {
-    // Utiliser la collection par défaut
-    if (DEFAULT_COLLECTION === 'adventurer') {
-      return generateAdventurerAvatar(seed);
-    } else if (DEFAULT_COLLECTION === 'big-smile') {
-      return generateBigSmileAvatar(seed);
-    } else if (DEFAULT_COLLECTION === 'bottts') {
-      return generateBotttsAvatar(seed);
-    } else {
-      return generateAvataaarsAvatar(seed);
-    }
+    const collection = COLLECTIONS[DEFAULT_COLLECTION];
+    const avatar = createAvatar(collection, { seed, size: 128 });
+    return avatar.toString();
   } catch (error) {
     console.error('Error generating DiceBear avatar:', error);
     return getDefaultAvatarSVG();
   }
 }
 
-// Fonctions spécifiques pour chaque collection
-function generateAvataaarsAvatar(seed: string): string {
-  const avatar = createAvatar(avataaars, {
-    seed: seed,
-    size: 128,
-    backgroundColor: ['b6e3f4'],
-    radius: 50,
-  });
-  return avatar.toString();
-}
-
-function generateAdventurerAvatar(seed: string): string {
-  const avatar = createAvatar(adventurer, {
-    seed: seed,
-    size: 128,
-  });
-  return avatar.toString();
-}
-
-function generateBigSmileAvatar(seed: string): string {
-  const avatar = createAvatar(bigSmile, {
-    seed: seed,
-    size: 128,
-  });
-  return avatar.toString();
-}
-
-function generateBotttsAvatar(seed: string): string {
-  const avatar = createAvatar(bottts, {
-    seed: seed,
-    size: 128,
-  });
-  return avatar.toString();
-}
-
 /**
- * Generate a new random seed for avatar regeneration
- * @returns Random string to use as avatar seed
+ * Génère un nouveau seed aléatoire pour la regénération d'avatar
  */
 export function generateRandomAvatarSeed(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  return Math.random().toString(36).substring(2, 15)
+       + Math.random().toString(36).substring(2, 15);
 }
 
 /**
- * Generate a DiceBear avatar SVG string with custom options
- * @param seed - A unique string to generate consistent avatars (e.g., user ID)
- * @param options - Additional options for the avatar
- * @returns SVG string for the DiceBear avatar
- */
-export function generateDiceBearAvatarWithOptions(seed: string, options: {
-  size?: number;
-  backgroundColor?: string;
-  radius?: number;
-} = {}): string {
-  try {
-    const avatar = createAvatar(avataaars, {
-      seed: seed,
-      size: options.size || 128,
-      backgroundColor: [options.backgroundColor || 'b6e3f4'],
-      radius: options.radius || 50,
-    });
-    
-    return avatar.toString();
-  } catch (error) {
-    console.error('Error generating DiceBear avatar with options:', error);
-    // Fallback to a default avatar SVG
-    return getDefaultAvatarSVG();
-  }
-}
-
-/**
- * Fallback default avatar SVG
+ * Fallback avatar SVG si DiceBear échoue
  */
 function getDefaultAvatarSVG(): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
