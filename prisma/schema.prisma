@@ -110,6 +110,8 @@ model users {
   first_name String?   @db.VarChar(60)
   username   String    @unique @db.VarChar(60)
   password   String    @db.VarChar(255)
+  avatar_url String?   @db.Text
+  avatar_seed String?  @db.VarChar(60)  // Permet de changer d'avatar
   role       user_role @default(user)
   created_at DateTime  @default(now()) @db.Timestamptz
   updated_at DateTime  @default(now()) @updatedAt @db.Timestamptz

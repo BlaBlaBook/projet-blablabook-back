@@ -267,7 +267,7 @@ async function main() {
 			data: {
 				book: { connect: { id: book.id } },
 				user: { connect: { id: user.id } },
-				reading_status: "à_lire",
+				reading_status: "à lire",
 			},
 		});
 	}
