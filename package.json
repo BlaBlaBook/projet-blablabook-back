@@ -26,6 +26,9 @@
     "db:seed": "node --env-file=.env ./src/models/seeding.ts"
   },
   "dependencies": {
+    "@dicebear/avatars": "^4.10.8",
+    "@dicebear/collection": "^9.2.4",
+    "@dicebear/core": "^9.2.4",
     "@prisma/adapter-pg": "^7.1.0",
     "@prisma/client": "^7.1.0",
     "argon2": "^0.44.0",

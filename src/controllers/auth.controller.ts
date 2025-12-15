@@ -14,6 +14,7 @@ import {
 	generateRefreshToken,
 	setTokensInCookies,
 } from "../lib/token.ts";
+import { generateDiceBearAvatar, generateRandomAvatarSeed } from "../lib/dicebear.ts";
 
 // -----------------------------------
 // ----- POST /api/auth/register -----
@@ -45,12 +46,17 @@ export async function registerUser(req: Request, res: Response) {
 
 	const hashedPassword = await argon2.hash(password);
 
+	// Generate DiceBear avatar SVG based on username (or custom seed if available)
+	const avatarSeed = req.body.avatar_seed || username;
+	const avatarSvg = generateDiceBearAvatar(avatarSeed);
+
 	// Save the user in the DB
 	const createdUser = await prisma.users.create({
 		data: {
 			username,
 			email,
 			password: hashedPassword,
+			avatar_url: avatarSvg,
 		},
 	});
 
@@ -59,6 +65,7 @@ export async function registerUser(req: Request, res: Response) {
 		id: createdUser.id,
 		username: createdUser.username,
 		email: createdUser.email,
+		avatar_url: createdUser.avatar_url,
 		created_at: createdUser.created_at,
 		updated_at: createdUser.updated_at,
 	});
@@ -115,7 +122,20 @@ export async function getCurrentUser(req: Request, res: Response) {
 		throw new NotFoundError("No user associated with this access token");
 	}
 
-	res.json(user);
+	// If user doesn't have an avatar_url, generate one based on their username or custom seed
+	if (!user.avatar_url) {
+		const avatarSeed = user.avatar_seed || user.username;
+		const generatedAvatarSvg = generateDiceBearAvatar(avatarSeed);
+		// Update the user with the generated avatar
+		const updatedUser = await prisma.users.update({
+			where: { id: userId },
+			data: { avatar_url: generatedAvatarSvg },
+			omit: { password: true },
+		});
+		res.json(updatedUser);
+	} else {
+		res.json(user);
+	}
 }
 
 // -----------------------------------
@@ -145,6 +165,7 @@ export async function updateCurrentUser(req: Request, res: Response) {
         email: z.email().optional(),
         last_name: z.string().optional(),
         first_name: z.string().optional(),
+        avatar_url: z.url().optional(),
         currentPassword: passwordValidationSchema.optional(),
         newPassword: passwordValidationSchema.optional(),
         confirmPassword: passwordValidationSchema.optional(),
@@ -155,6 +176,7 @@ export async function updateCurrentUser(req: Request, res: Response) {
         email,
         first_name,
         last_name,
+        avatar_url,
         currentPassword,
         newPassword,
         confirmPassword,
@@ -207,6 +229,7 @@ export async function updateCurrentUser(req: Request, res: Response) {
             email,
             first_name,
             last_name,
+            avatar_url,
             password: hashedPassword,
         },
         omit: { password: true },
@@ -214,6 +237,42 @@ export async function updateCurrentUser(req: Request, res: Response) {
 
     return res.json(updatedUser);
 };
+
+// ----------------------------------
+// ----- POST /api/auth/avatar ------
+// ----------------------------------
+export async function regenerateAvatar(req: Request, res: Response) {
+	console.log('🎨 Regenerate avatar endpoint called');
+	const userId = req.userId;
+	
+	try {
+		console.log('Generating new avatar for user:', userId);
+		// Générer un nouveau seed aléatoire
+		const newSeed = generateRandomAvatarSeed();
+		
+		// Générer le nouvel avatar (utilise la collection par défaut)
+		const newAvatar = generateDiceBearAvatar(newSeed);
+		
+		// Mettre à jour l'utilisateur
+		const updatedUser = await prisma.users.update({
+			where: { id: userId },
+			data: {
+				avatar_url: newAvatar,
+				avatar_seed: newSeed
+			},
+			omit: { password: true }
+		});
+		
+		res.json({
+			message: "Avatar regenerated successfully",
+			avatar_url: updatedUser.avatar_url
+		});
+		
+	} catch (error) {
+		console.error('Error regenerating avatar:', error);
+		throw new Error("Failed to regenerate avatar");
+	}
+}
 
 // -----------------------------------
 // ------- DELETE /api/auth/me -------
