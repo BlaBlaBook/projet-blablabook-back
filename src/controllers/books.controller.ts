@@ -130,7 +130,7 @@ export async function getBookById(req: Request, res: Response) {
 			userRecords: userId
 				? {
 						where: { user_id: userId },
-						select: { reading_status: true },
+						select: { reading_status: true, rating: true },
 					}
 				: false,
 		},
@@ -158,6 +158,7 @@ export async function getBookById(req: Request, res: Response) {
 			category: bg.genre.category,
 		})),
 		reading_status: book.userRecords?.[0]?.reading_status ?? null,
+		user_rating: book.userRecords?.[0]?.rating ?? null,
 		created_at: book.created_at,
 		updated_at: book.updated_at,
 	};
@@ -396,6 +397,32 @@ export async function deleteBook(req: Request, res: Response) {
 
 	await prisma.books.delete({ where: { id: bookId } });
 	res.status(204).send();
+}
+
+// -----------------------------
+// --- GET /api/books/:id/rating ---
+// -----------------------------
+export async function getBookRating(req: Request, res: Response) {
+	const bookId = await parseIdFromParams(req.params.id);
+
+	// Fetch all ratings for this book
+	const ratings = await prisma.user_book_records.findMany({
+		where: { book_id: bookId, rating: { not: null } },
+		select: { rating: true },
+	});
+
+	// Calculate average rating
+	if (ratings.length === 0) {
+		return res.json({ averageRating: null, count: 0 });
+	}
+
+	const sum = ratings.reduce((acc, curr) => acc + (curr.rating || 0), 0);
+	const averageRating = sum / ratings.length;
+
+	res.json({ 
+		averageRating: parseFloat(averageRating.toFixed(1)), 
+		count: ratings.length 
+	});
 }
 
 // ---------------------------
