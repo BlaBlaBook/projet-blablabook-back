@@ -12,7 +12,7 @@ datasource db {
 // ============================================
 enum user_role {
   admin
-  user 
+  user
 }
 
 enum reading_status {
@@ -104,26 +104,24 @@ model book_genre {
 
 // ---------- USERS ----------
 model users {
-  id         String    @id @default(uuid()) @db.Uuid
-  email      String    @unique @db.VarChar(255)
-  last_name  String?   @db.VarChar(60)
-  first_name String?   @db.VarChar(60)
-  username   String    @unique @db.VarChar(60)
-  password   String?   @db.VarChar(255)
-  avatar_url String?   @db.Text
-  avatar_seed String?  @db.VarChar(60)  // Permet de changer d'avatar
-
-  reset_password_token_hash String?  @db.VarChar(255)
-  reset_password_expires_at DateTime? @db.Timestamptz
+  id          String  @id @default(uuid()) @db.Uuid
+  email       String  @unique @db.VarChar(255)
+  last_name   String? @db.VarChar(60)
+  first_name  String? @db.VarChar(60)
+  username    String  @unique @db.VarChar(60)
+  password    String? @db.VarChar(255)
+  avatar_url  String? @db.Text
+  avatar_seed String? @db.VarChar(60)
 
   role       user_role @default(user)
   created_at DateTime  @default(now()) @db.Timestamptz
   updated_at DateTime  @default(now()) @updatedAt @db.Timestamptz
 
-  bookRecords   user_book_records[]
-  refreshTokens RefreshToken[]
-  comments      comments[]
-  commentLikes  commentLikes[]
+  bookRecords         user_book_records[]
+  refreshTokens       RefreshToken[]
+  resetPasswordTokens ResetPasswordToken[]
+  comments            comments[]
+  commentLikes        commentLikes[]
 
   @@map("users")
 }
@@ -134,7 +132,7 @@ model user_book_records {
   reading_status reading_status @default(à_lire)
   user_id        String         @db.Uuid
   book_id        String         @db.Uuid
-  rating         Int?           
+  rating         Int?
   created_at     DateTime       @default(now()) @db.Timestamptz
   updated_at     DateTime       @default(now()) @updatedAt @db.Timestamptz
 
@@ -145,18 +143,30 @@ model user_book_records {
   @@map("user_book_records")
 }
 
-
 // ---------- REFRESH_TOKEN ----------
 model RefreshToken {
-  id             String         @id @default(uuid()) @db.Uuid
-  token          String
-  expiresAt      DateTime
-  created_at     DateTime       @default(now()) @db.Timestamptz
-  updated_at     DateTime       @default(now()) @updatedAt @db.Timestamptz
-  userId         String         @db.Uuid
-  user           users          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid()) @db.Uuid
+  token      String
+  expiresAt  DateTime
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
+  userId     String   @db.Uuid
+  user       users    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+// ---------- RESET_PASSWORD_TOKEN ----------
+model ResetPasswordToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  tokenHash  String   @db.VarChar(255)
+  expiresAt  DateTime @db.Timestamptz
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
+  userId     String   @db.Uuid
+  user       users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reset_password_tokens")
 }
 
 // ---------- COMMENTS ----------
@@ -169,16 +179,15 @@ model comments {
   created_at DateTime @default(now()) @db.Timestamptz
   updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
 
-  user    users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  book    books     @relation(fields: [book_id], references: [id], onDelete: Cascade)
-  parent  comments? @relation("CommentReplies", fields: [parent_id], references: [id])
-  replies comments[] @relation("CommentReplies")
+  user    users          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book    books          @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  parent  comments?      @relation("CommentReplies", fields: [parent_id], references: [id])
+  replies comments[]     @relation("CommentReplies")
   likes   commentLikes[]
 
   @@index([book_id])
   @@map("comments")
 }
-
 
 // ---------- COMMENT LIKES ----------
 model commentLikes {
