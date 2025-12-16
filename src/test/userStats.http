@@ -1,0 +1,5 @@
+@baseUrl=http://localhost:4000/api
+
+### GET User Stats
+GET {{baseUrl}}/users/stats
+Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwNDkzM2E0Yi0yMmZhLTQzNjMtOTdkOS03YjE3OWRlNjJkYWUiLCJ1c2VyUm9sZSI6InVzZXIiLCJpYXQiOjE3NjU4MzMzNTUsImV4cCI6MTc2NTgzNjk1NX0.8r4ROKeL0PEgzvQxMrp_Ep4eIeWJMZf-2H5-i_c1oMg
