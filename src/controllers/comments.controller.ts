@@ -8,6 +8,8 @@ import { NotFoundError, UnauthorizedError, BadRequestError } from "../lib/error.
 export async function getCommentsByBook(req: Request, res: Response) {
   const { bookId } = req.params;
 
+  const userId = req.userId ? parseInt(req.userId, 10) : null;
+
   // Check if book exists
   const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
   if (!bookExists) {
@@ -65,24 +67,30 @@ export async function getCommentsByBook(req: Request, res: Response) {
   });
 
   // Function to transform to frontend format with likesCount, userRating and recursion
-  function formatComment(comment: any): any {
+  function formatComment(comment: any, userId: number | null): any {
     // Get user's rating (first element of bookRecords array)
     const userRating = comment.user.bookRecords[0]?.rating ?? null;
+
+    const likedByMe = userId ? comment.likes.some((like: any) => like.user_id === userId) : false;
+
 
     return {
       id: comment.id,
       content: comment.content,
+      created_at: comment.created_at.toISOString(),
+      parent_id: comment.parent_id ?? null,
       user: {
         id: comment.user.id,
         username: comment.user.username
       },
-      userRating: userRating,  // The rating of the comment author
-      likesCount: comment.likes.length,
-      replies: comment.replies?.map(formatComment) || [],
+      userRating: userRating,
+      likesCount: comment.likes.length, 
+      likedByMe,
+      replies: comment.replies?.map((r: any) => formatComment(r, userId)) || [],
     };
   }
 
-  const formattedComments = rootComments.map(formatComment);
+  const formattedComments = rootComments.map(c => formatComment(c, userId));
 
   res.json({
     comments: formattedComments,
@@ -142,6 +150,8 @@ export async function addComment(req: Request, res: Response) {
   const formattedComment = {
     id: newComment.id,
     content: newComment.content,
+    created_at: newComment.created_at.toISOString(),
+    parent_id: newComment.parent_id ?? null,
     user: newComment.user,
     likesCount: newComment.likes.length,
     replies: [],
