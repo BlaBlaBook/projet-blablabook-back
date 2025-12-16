@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createBook, deleteBook, getAllBooks, getBookById, updateBook } from "../controllers/books.controller.ts";
+import { createBook, deleteBook, getAllBooks, getBookById, updateBook, getBookRating } from "../controllers/books.controller.ts";
 import { getUser } from "../middlewares/getUser.ts";
 import { searchGoogleBooks } from "../controllers/booksSearch.controller.ts";
 import { addComment, getCommentsByBook, toggleCommentLike } from "../controllers/comments.controller.ts";
@@ -16,3 +16,4 @@ router.post("/books/:bookId/comments", isAuth, addComment);
 router.post("/books/:bookId/comments/:commentId/like", isAuth, toggleCommentLike);
 router.patch("/books/:id", updateBook);
 router.delete("/books/:id", deleteBook);
+router.get("/books/:id/rating", getBookRating);
