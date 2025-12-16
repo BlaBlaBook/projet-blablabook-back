@@ -211,6 +211,7 @@ export async function getCurrentUser(req: Request, res: Response) {
 			updated_at: true,
 			avatar_url: true,
 			avatar_seed: true,
+			role: true,
 			password: true, // to check existence (accounts created with google have no password)
 		},
 	});
@@ -240,12 +241,7 @@ export async function getCurrentUser(req: Request, res: Response) {
 
 	// Send user object without password + with hasPassword
 	res.json({
-		id: finalUser.id,
-		email: finalUser.email,
-		username: finalUser.username,
-		avatar_url: finalUser.avatar_url,
-		created_at: finalUser.created_at,
-		updated_at: finalUser.updated_at,
+		...finalUser,
 		hasPassword,
 	});
 }
