@@ -1,48 +1,52 @@
 import { NotFoundError, ForbiddenError } from "../lib/error.ts";
 import { prisma } from "../models/index.ts";
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response } from "express";
 
-export async function getAllUsers(req: Request, res: Response, next: NextFunction) {
-  try {
-    const users = await prisma.users.findMany({
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        role: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+// -----------------------------------
+// -------- GET /api/admin/users ------
+// -----------------------------------
+export async function getAllUsers(req: Request, res: Response) {
+	// Fetch all users with selected fields
+	const users = await prisma.users.findMany({
+		select: {
+			id: true,
+			email: true,
+			username: true,
+			role: true,
+			created_at: true,
+			updated_at: true,
+		},
+	});
 
-    res.json({ users });
-  } catch (error) {
-    next(error);
-  }
+	// Return users list
+	res.json({ users });
 }
 
-export async function deleteUserById(req: Request, res: Response, next: NextFunction) {
-  const userId = req.params.userId;
+// -----------------------------------
+// ----- DELETE /api/admin/users/:id ---
+// -----------------------------------
+export async function deleteUserById(req: Request, res: Response) {
+	const userId = req.params.userId;
 
-  try {
-    const existingUser = await prisma.users.findUnique({
-      where: { id: userId },
-    });
+	// Check if user exists
+	const existingUser = await prisma.users.findUnique({
+		where: { id: userId },
+	});
 
-    if (!existingUser) {
-      throw new NotFoundError("User not found");
-    }
+	if (!existingUser) {
+		throw new NotFoundError("User not found");
+	}
 
-    if (existingUser.role === "admin") {
-      throw new ForbiddenError("Admin user cannot be deleted");
-    }
+	// Prevent deletion of admin users
+	if (existingUser.role === "admin") {
+		throw new ForbiddenError("Admin user cannot be deleted");
+	}
 
-    await prisma.users.delete({
-      where: { id: userId },
-    });
+	// Delete the user
+	await prisma.users.delete({
+		where: { id: userId },
+	});
 
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
+	// Return 204 No Content on successful deletion
+	res.status(204).send();
 }

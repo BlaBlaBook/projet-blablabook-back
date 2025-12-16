@@ -3,23 +3,38 @@ import { prisma } from "../models/index.ts";
 import { parseIdFromParams } from "../lib/utils.ts";
 import { NotFoundError } from "../lib/error.ts";
 
+// -----------------------------------
+// -------- GET /api/authors ---------
+// -----------------------------------
 export async function getAllAuthors(req: Request, res: Response) {
-  const books = await prisma.authors.findMany();
-  res.json(books);
+	// Fetch all authors from database
+	const authors = await prisma.authors.findMany();
+
+	// Return authors list
+	res.json(authors);
 }
 
+// -----------------------------------
+// ----- DELETE /api/authors/:id ------
+// -----------------------------------
 export async function deleteAuthor(req: Request, res: Response) {
-const authorId = await parseIdFromParams(req.params.id);
+	// Parse and validate author ID from URL params
+	const authorId = await parseIdFromParams(req.params.id);
 
-const existingAuthor = await prisma.authors.findUnique({
-  where: { id: authorId },
-});
+	// Check if author exists
+	const existingAuthor = await prisma.authors.findUnique({
+		where: { id: authorId },
+	});
 
-if (!existingAuthor) throw new NotFoundError("Author not found");
+	if (!existingAuthor) {
+		throw new NotFoundError("Author not found");
+	}
 
-await prisma.authors.delete({
-  where: { id: authorId },
-});
+	// Delete the author
+	await prisma.authors.delete({
+		where: { id: authorId },
+	});
 
-res.status(204).send();
+	// Return 204 No Content on successful deletion
+	res.status(204).send();
 }
