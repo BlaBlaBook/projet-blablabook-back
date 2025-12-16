@@ -23,7 +23,8 @@
     "prisma:studio": "prisma studio",
     "prisma:reset": "prisma migrate reset --force",
     "dev:db": "npm run prisma:reset && npm run prisma:generate && npm run prisma:migrate && npm run dev",
-    "db:seed": "node --env-file=.env ./src/models/seeding.ts"
+    "db:seed": "node --env-file=.env ./src/models/seeding.ts",
+    "test:unit": "node --test ./**/*.unit.test.ts"
   },
   "dependencies": {
     "@dicebear/avatars": "^4.10.8",
