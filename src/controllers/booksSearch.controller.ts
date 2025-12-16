@@ -10,15 +10,19 @@ import {
 	type CreateBookInput,
 } from "../schemas/books.schema.ts";
 
+// -----------------------------------
+// --- GET /api/books/search ---------
+// -----------------------------------
 export async function searchGoogleBooks(req: Request, res: Response) {
 	// Extract query parameters: 'isbn' for exact search or 'q' for keyword search
 	const { q, isbn } = req.query as unknown as GoogleBooksQuery;
 
 	// Validate that at least one search parameter is provided
-	if (!isbn && !q)
+	if (!isbn && !q) {
 		throw new BadRequestError(
 			"Missing search parameter: provide either 'isbn' for exact search or 'title'/'keyword' as 'q'",
 		);
+	}
 
 	// Retrieve Google Books API key from environment variables
 	const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
@@ -37,16 +41,16 @@ export async function searchGoogleBooks(req: Request, res: Response) {
 		const response = await fetch(url);
 		if (!response.ok) {
 			console.error(
-				"Google Books fetch error:",
+				"Google Books API error:",
 				response.status,
 				await response.text(),
 			);
-			return res.status(500).json({ message: "Erreur Google Books" });
+			throw new Error("Google Books API request failed");
 		}
 
 		const data: GoogleBooksAPIResponse = await response.json();
 		console.log(
-			`Nombre de résultats Google reçus : ${data.items?.length ?? 0}`,
+			`Number of Google results received: ${data.items?.length ?? 0}`,
 		);
 
 		// Transform Google Books results into CreateBookInput format
@@ -64,7 +68,7 @@ export async function searchGoogleBooks(req: Request, res: Response) {
 				// Skip books without ISBN
 				if (!isbnValue) return null;
 
-				// Skip books not in language fr
+				// Skip books not in French language
 				if (item.volumeInfo.language !== "fr") return null;
 
 				// Extract year from publication date
@@ -100,7 +104,7 @@ export async function searchGoogleBooks(req: Request, res: Response) {
 						genres,
 					});
 				} catch {
-					console.warn("Livre ignoré (ne passe pas le schema) :", info.title);
+					console.warn("Book skipped (failed schema validation):", info.title);
 					return null;
 				}
 			})
@@ -108,7 +112,7 @@ export async function searchGoogleBooks(req: Request, res: Response) {
 
 		res.json(books);
 	} catch (err) {
-		console.error("Erreur endpoint Google Books :", err);
+		console.error("Error in Google Books endpoint:", err);
 		throw err;
 	}
 }
