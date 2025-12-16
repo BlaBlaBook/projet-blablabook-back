@@ -1,172 +1,185 @@
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response } from "express";
 import { prisma } from "../models/index.ts";
+import { NotFoundError, UnauthorizedError, BadRequestError } from "../lib/error.ts";
 
-export async function getCommentsByBook(req: Request, res: Response, next: NextFunction) {
+// -----------------------------------
+// --- GET /api/comments/:bookId -----
+// -----------------------------------
+export async function getCommentsByBook(req: Request, res: Response) {
   const { bookId } = req.params;
 
-  try {
-    // Vérifie que le livre existe
-    const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
-    if (!bookExists) return res.status(404).json({ error: "Livre introuvable" });
+  // Check if book exists
+  const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
+  if (!bookExists) {
+    throw new NotFoundError("Book not found");
+  }
 
-    // Récupère les commentaires racine avec utilisateur, likes ET la note de l'utilisateur
-    const rootComments = await prisma.comments.findMany({
-      where: { book_id: bookId, parent_id: null },
-      orderBy: { created_at: "desc" },
-      include: {
-        user: { 
-          select: { 
-            id: true, 
-            username: true,
-            // On récupère aussi la note de cet utilisateur pour ce livre
-            bookRecords: {
-              where: { book_id: bookId },
-              select: { rating: true }
-            }
-          } 
-        },
-        likes: true,
-        replies: {
-          include: {
-            user: { 
-              select: { 
-                id: true, 
-                username: true,
-                bookRecords: {
-                  where: { book_id: bookId },
-                  select: { rating: true }
-                }
-              } 
-            },
-            likes: true,
-            replies: {
-              include: {
-                user: { 
-                  select: { 
-                    id: true, 
-                    username: true,
-                    bookRecords: {
-                      where: { book_id: bookId },
-                      select: { rating: true }
-                    }
-                  } 
-                },
-                likes: true,
+  // Fetch root comments with user, likes AND the user's rating for this book
+  const rootComments = await prisma.comments.findMany({
+    where: { book_id: bookId, parent_id: null },
+    orderBy: { created_at: "desc" },
+    include: {
+      user: { 
+        select: { 
+          id: true, 
+          username: true,
+          // Also get this user's rating for this book
+          bookRecords: {
+            where: { book_id: bookId },
+            select: { rating: true }
+          }
+        } 
+      },
+      likes: true,
+      replies: {
+        include: {
+          user: { 
+            select: { 
+              id: true, 
+              username: true,
+              bookRecords: {
+                where: { book_id: bookId },
+                select: { rating: true }
               }
-            },
+            } 
+          },
+          likes: true,
+          replies: {
+            include: {
+              user: { 
+                select: { 
+                  id: true, 
+                  username: true,
+                  bookRecords: {
+                    where: { book_id: bookId },
+                    select: { rating: true }
+                  }
+                } 
+              },
+              likes: true,
+            }
           },
         },
       },
-    });
+    },
+  });
 
-    // Fonction pour transformer en format frontend avec likesCount, userRating et récursion
-    function formatComment(comment: any): any {
-      // Récupère la note de l'utilisateur (le premier élément du tableau bookRecords)
-      const userRating = comment.user.bookRecords[0]?.rating ?? null;
+  // Function to transform to frontend format with likesCount, userRating and recursion
+  function formatComment(comment: any): any {
+    // Get user's rating (first element of bookRecords array)
+    const userRating = comment.user.bookRecords[0]?.rating ?? null;
 
-      return {
-        id: comment.id,
-        content: comment.content,
-        user: {
-          id: comment.user.id,
-          username: comment.user.username
-        },
-        userRating: userRating,  // La note de l'auteur du commentaire
-        likesCount: comment.likes.length,
-        replies: comment.replies?.map(formatComment) || [],
-      };
-    }
-
-    const formattedComments = rootComments.map(formatComment);
-
-    res.json({
-      comments: formattedComments,
-    });
-  } catch (error) {
-    console.error("Error in getCommentsByBook:", error);
-    next(error);
+    return {
+      id: comment.id,
+      content: comment.content,
+      user: {
+        id: comment.user.id,
+        username: comment.user.username
+      },
+      userRating: userRating,  // The rating of the comment author
+      likesCount: comment.likes.length,
+      replies: comment.replies?.map(formatComment) || [],
+    };
   }
+
+  const formattedComments = rootComments.map(formatComment);
+
+  res.json({
+    comments: formattedComments,
+  });
 }
 
-export async function addComment(req: Request, res: Response, next: NextFunction) {
+// -----------------------------------
+// ----- POST /api/comments/:bookId --
+// -----------------------------------
+export async function addComment(req: Request, res: Response) {
   const { bookId } = req.params;
   const { content, parent_id } = req.body;
   const userId = req.userId;
 
-  try {
-    if (!userId) return res.status(401).json({ error: "Utilisateur non authentifié" });
-    if (!content || content.trim() === "") return res.status(400).json({ error: "Le contenu est requis" });
-
-    // Vérifie que le livre existe
-    const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
-    if (!bookExists) return res.status(404).json({ error: "Livre introuvable" });
-
-    // Vérifie que parent existe si fourni
-    let parentConnect = undefined;
-    if (parent_id) {
-      const parentComment = await prisma.comments.findUnique({ where: { id: parent_id } });
-      if (!parentComment) return res.status(404).json({ error: "Commentaire parent introuvable" });
-      parentConnect = { connect: { id: parent_id } };
-    }
-
-    // Crée le commentaire
-    const newComment = await prisma.comments.create({
-      data: {
-        content,
-        user: { connect: { id: userId } },
-        book: { connect: { id: bookId } },
-        parent: parentConnect,
-      },
-      include: {
-        user: { select: { id: true, username: true } },
-        likes: true,
-        replies: true,
-      },
-    });
-
-    // Format pour le frontend
-    const formattedComment = {
-      id: newComment.id,
-      content: newComment.content,
-      user: newComment.user,
-      likesCount: newComment.likes.length,
-      replies: [],
-    };
-
-    res.status(201).json(formattedComment);
-  } catch (error) {
-    console.error("Error in addComment:", error);
-    next(error);
+  // Check if user is authenticated
+  if (!userId) {
+    throw new UnauthorizedError("User not authenticated");
   }
+
+  // Validate content
+  if (!content || content.trim() === "") {
+    throw new BadRequestError("Content is required");
+  }
+
+  // Check if book exists
+  const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
+  if (!bookExists) {
+    throw new NotFoundError("Book not found");
+  }
+
+  // Check if parent comment exists if provided
+  let parentConnect = undefined;
+  if (parent_id) {
+    const parentComment = await prisma.comments.findUnique({ where: { id: parent_id } });
+    if (!parentComment) {
+      throw new NotFoundError("Parent comment not found");
+    }
+    parentConnect = { connect: { id: parent_id } };
+  }
+
+  // Create the comment
+  const newComment = await prisma.comments.create({
+    data: {
+      content,
+      user: { connect: { id: userId } },
+      book: { connect: { id: bookId } },
+      parent: parentConnect,
+    },
+    include: {
+      user: { select: { id: true, username: true } },
+      likes: true,
+      replies: true,
+    },
+  });
+
+  // Format for frontend
+  const formattedComment = {
+    id: newComment.id,
+    content: newComment.content,
+    user: newComment.user,
+    likesCount: newComment.likes.length,
+    replies: [],
+  };
+
+  res.status(201).json(formattedComment);
 }
 
-export async function toggleCommentLike(req: Request, res: Response, next: NextFunction) {
+// -----------------------------------
+// -- PATCH /api/comments/:id/like ---
+// -----------------------------------
+export async function toggleCommentLike(req: Request, res: Response) {
   const { commentId } = req.params;
   const userId = req.userId;
 
-  if (!userId) return res.status(401).json({ error: "Utilisateur non authentifié" });
+  // Check if user is authenticated
+  if (!userId) {
+    throw new UnauthorizedError("User not authenticated");
+  }
 
-  try {
-    // Vérifie que le commentaire existe
-    const comment = await prisma.comments.findUnique({ where: { id: commentId } });
-    if (!comment) return res.status(404).json({ error: "Commentaire introuvable" });
+  // Check if comment exists
+  const comment = await prisma.comments.findUnique({ where: { id: commentId } });
+  if (!comment) {
+    throw new NotFoundError("Comment not found");
+  }
 
-    // Toggle like
-    const existingLike = await prisma.commentLikes.findUnique({
-      where: { user_id_comment_id: { user_id: userId, comment_id: commentId } },
+  // Toggle like
+  const existingLike = await prisma.commentLikes.findUnique({
+    where: { user_id_comment_id: { user_id: userId, comment_id: commentId } },
+  });
+
+  if (existingLike) {
+    await prisma.commentLikes.delete({ where: { id: existingLike.id } });
+    return res.json({ liked: false });
+  } else {
+    await prisma.commentLikes.create({
+      data: { user_id: userId, comment_id: commentId },
     });
-
-    if (existingLike) {
-      await prisma.commentLikes.delete({ where: { id: existingLike.id } });
-      return res.json({ liked: false });
-    } else {
-      await prisma.commentLikes.create({
-        data: { user_id: userId, comment_id: commentId },
-      });
-      return res.json({ liked: true });
-    }
-  } catch (error) {
-    console.error("Error in toggleCommentLike:", error);
-    next(error);
+    return res.json({ liked: true });
   }
 }
