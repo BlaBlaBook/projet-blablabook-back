@@ -14,7 +14,7 @@ const prisma = getPrisma();
 export async function getCommentsByBook(req: Request, res: Response) {
 	const { bookId } = req.params;
 
-	const userId = req.userId;
+  const userId = req.userId;
 
 	// Check if book exists
 	const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
@@ -72,34 +72,34 @@ export async function getCommentsByBook(req: Request, res: Response) {
 		},
 	});
 
-	// Function to transform to frontend format with likesCount, userRating and recursion
-	function formatComment(comment: any, userId: string | undefined): any {
-		// Get user's rating (first element of bookRecords array)
-		const userRating = comment.user.bookRecords[0]?.rating ?? null;
+  // Function to transform to frontend format with likesCount, userRating and recursion
+    function formatComment(comment: any, userId: string | undefined): any {
+        // Get user's rating (first element of bookRecords array)
+        const userRating = comment.user.bookRecords[0]?.rating ?? null;
 
-		// Only include likedByMe if user is logged in
-		const likedByMe = userId
-			? comment.likes.some((like: any) => like.user_id === userId)
-			: undefined;
+        // Only include likedByMe if user is logged in
+        const likedByMe = userId
+            ? comment.likes.some((like: any) => like.user_id === userId)
+            : undefined;
 
-		const formatted: any = {
-			id: comment.id,
-			content: comment.content,
-			created_at: comment.created_at.toISOString(),
-			parent_id: comment.parent_id ?? null,
-			user: {
-				id: comment.user.id,
-				username: comment.user.username,
-			},
-			userRating,
-			likesCount: comment.likes.length,
-			replies: comment.replies?.map((r: any) => formatComment(r, userId)) || [],
-		};
+        const formatted: any = {
+            id: comment.id,
+            content: comment.content,
+            created_at: comment.created_at.toISOString(),
+            parent_id: comment.parent_id ?? null,
+            user: {
+                id: comment.user.id,
+                username: comment.user.username,
+            },
+            userRating,
+            likesCount: comment.likes.length,
+            replies: comment.replies?.map((r: any) => formatComment(r, userId)) || [],
+        };
 
-		if (userId) formatted.likedByMe = likedByMe;
+        if (userId) formatted.likedByMe = likedByMe;
 
-		return formatted;
-	}
+        return formatted;
+    }
 
 	const formattedComments = rootComments.map((c) => formatComment(c, userId));
 	res.json({
