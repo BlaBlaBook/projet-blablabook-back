@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  test-db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+    ports:
+      - "5434:5432" # different port from dev db
+    volumes:
+      - test-db-volume:/var/lib/postgresql
+
+volumes:
+  test-db-volume:

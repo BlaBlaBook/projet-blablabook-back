@@ -3,8 +3,10 @@ import crypto from "node:crypto";
 import type { JwtPayload } from "jsonwebtoken";
 import type { Request, Response } from "express";
 import { config } from "../../config.ts";
-import { prisma, type users } from "../models/index.ts";
+import { getPrisma, type users } from "../models/index.ts";
 import { UnauthorizedError } from "./error.ts";
+
+const prisma = getPrisma();
 
 export const ACCESS_TOKEN_DURATION_IN_MS = 1 * 60 * 60 * 1000; // 1h
 export const REFRESH_TOKEN_DURATION_IN_MS = 7 * 24 * 60 * 60 * 1000; // 7d

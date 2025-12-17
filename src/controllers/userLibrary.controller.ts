@@ -1,8 +1,10 @@
 import type { Request, Response } from "express";
-import { prisma, reading_status } from "../models/index.ts";
+import { getPrisma, type reading_status } from "../models/index.ts";
 import { parseIdFromParams } from "../lib/utils.ts";
 import { NotFoundError, ConflictError, BadRequestError } from "../lib/error.ts";
 import { changeReadingStatusSchema } from "../schemas/userLibrary.schema.ts";
+
+const prisma = getPrisma();
 
 // -----------------------------------
 // --- GET /api/user-library/books ---

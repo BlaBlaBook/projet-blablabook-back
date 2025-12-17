@@ -6,7 +6,7 @@ export const bookBaseSchema = z.object({
   year: z.number().int(),
   summary: z.string().min(1),
   language: z.string().length(2),
-  pages: z.number().int().min(35),
+  pages: z.number().int().min(40),
   image_url: z.url().max(255),
 });
 

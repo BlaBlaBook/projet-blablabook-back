@@ -1,10 +1,12 @@
 import type { Request, Response } from "express";
-import { prisma } from "../models/index.ts";
+import { getPrisma } from "../models/index.ts";
 import type { booksWhereInput } from "../../generated/prisma/models.ts";
 import { parseIdFromParams } from "../lib/utils.ts";
 import { ConflictError, NotFoundError } from "../lib/error.ts";
 import { createBookSchema, updateBookSchema } from "../schemas/books.schema.ts";
 import { normalizeQueryParam } from "../lib/query.ts";
+
+const prisma = getPrisma();
 
 // ----------------------------
 // ------ GET /api/books ------
@@ -29,8 +31,6 @@ export async function getAllBooks(req: Request, res: Response) {
 
 	// Group all filters in an object
 	const where: booksWhereInput = {};
-
-	// Normalise authorIds en tableau de string, pour 0, 1 ou plusieurs auteurs
 
 	// Filtre Prisma
 	if (authorIds.length > 0) {

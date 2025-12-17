@@ -1,6 +1,6 @@
 import argon2 from "argon2";
 import z from "zod";
-import { prisma } from "../models/index.ts";
+import { getPrisma } from "../models/index.ts";
 import type { Request, Response } from "express";
 import crypto from "crypto";
 import { Resend } from "resend";
@@ -32,6 +32,8 @@ if (!resendApiKey) console.warn("⚠️ Resend API key not set in .env");
 if (!resendDomainName) console.warn("⚠️ Resend domain name not set in .env");
 
 const resend = new Resend(resendApiKey);
+
+const prisma = getPrisma();
 
 // -----------------------------------
 // ----- POST /api/auth/register -----
