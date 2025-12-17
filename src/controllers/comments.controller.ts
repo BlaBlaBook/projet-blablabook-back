@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
-import { prisma } from "../models/index.ts";
+import { getPrisma } from "../models/index.ts";
 import { NotFoundError, UnauthorizedError, BadRequestError } from "../lib/error.ts";
+
+const prisma = getPrisma();
 
 // -----------------------------------
 // --- GET /api/comments/:bookId -----

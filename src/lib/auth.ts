@@ -1,9 +1,11 @@
 import { z } from "zod";
 import type { Request, Response } from "express";
-import { prisma } from "../models/index.ts";
+import { getPrisma } from "../models/index.ts";
 import { UnauthorizedError, ConflictError } from "./error.ts";
 import { generateAccessToken, generateRefreshToken } from "./token.ts";
 import { setTokensInCookies } from "./token.ts";
+
+const prisma = getPrisma();
 
 // --------------------------------------------------------------
 // Generate new access and refresh tokens and set them in cookies

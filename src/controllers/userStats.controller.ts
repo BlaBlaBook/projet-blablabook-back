@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
-import { prisma } from "../models/index.ts";
+import { getPrisma } from "../models/index.ts";
+
+const prisma = getPrisma();
 
 export const getUserStats = async (req: Request, res: Response) => {
   const userId = req.userId;

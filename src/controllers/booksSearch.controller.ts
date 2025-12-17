@@ -68,8 +68,9 @@ export async function searchGoogleBooks(req: Request, res: Response) {
 				// Skip books without ISBN
 				if (!isbnValue) return null;
 
-				// Skip books not in French language
-				if (item.volumeInfo.language !== "fr") return null;
+				// Skip books not in French or English language
+				const lang = item.volumeInfo.language;
+				if (lang !== "fr" && lang !== "en") return null;
 
 				// Extract year from publication date
 				let yearNum = 0;
@@ -108,7 +109,12 @@ export async function searchGoogleBooks(req: Request, res: Response) {
 					return null;
 				}
 			})
-			.filter(Boolean) as CreateBookInput[];
+			.filter((book): book is CreateBookInput => book !== null)
+			.sort((a, b) => {
+				// French first, then English
+				if (a.language === b.language) return 0;
+				return a.language === "fr" ? -1 : 1;
+			});
 
 		res.json(books);
 	} catch (err) {

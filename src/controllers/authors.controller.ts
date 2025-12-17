@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
-import { prisma } from "../models/index.ts";
+import { getPrisma } from "../models/index.ts";
 import { parseIdFromParams } from "../lib/utils.ts";
 import { NotFoundError } from "../lib/error.ts";
+
+const prisma = getPrisma();
 
 // -----------------------------------
 // -------- GET /api/authors ---------

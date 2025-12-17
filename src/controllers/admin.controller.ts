@@ -1,6 +1,8 @@
 import { NotFoundError, ForbiddenError } from "../lib/error.ts";
-import { prisma } from "../models/index.ts";
+import { getPrisma } from "../models/index.ts";
 import type { Request, Response } from "express";
+
+const prisma = getPrisma();
 
 // -----------------------------------
 // -------- GET /api/admin/users ------

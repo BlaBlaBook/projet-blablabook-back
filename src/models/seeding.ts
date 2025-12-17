@@ -1,5 +1,7 @@
 import { hash } from "argon2";
-import { prisma } from "./index.ts";
+import { getPrisma } from "./index.ts";
+
+const prisma = getPrisma();
 
 async function main() {
 	const adminPassword = await hash("Admin123!");
