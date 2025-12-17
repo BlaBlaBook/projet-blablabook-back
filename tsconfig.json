@@ -1,22 +1,22 @@
 {
-  // Ce fichier gère la manière dont le compilateur TSC va compiler le code TS vers du JS
-  // Pour lancer la compilation : `npx tsc` (ou `npm run build`)
+	// Ce fichier gère la manière dont le compilateur TSC va compiler le code TS vers du JS
+	// Pour lancer la compilation : `npx tsc` (ou `npm run build`)
 
-  "compilerOptions": {
-    "target": "esnext", // Language cible pour la compilation TS -> dernière version de JS
-    "module": "nodenext", // Type de résolution cible pour les modules (ESM)
-    "moduleResolution": "nodenext", // Type de résolution source pour les modules (ESM)
+	"compilerOptions": {
+		"target": "esnext", // Language cible pour la compilation TS -> dernière version de JS
+		"module": "nodenext", // Type de résolution cible pour les modules (ESM)
+		"moduleResolution": "nodenext", // Type de résolution source pour les modules (ESM)
+		"isolatedModules": true, // required by ts-jest for NodeNext
 
-    "rootDir": "./", // Où se trouve notre code TS
-    "outDir": "./dist", // Où sera généré notre code JS (distribution)
+		"rootDir": "./", // Où se trouve notre code TS
+		"outDir": "./dist", // Où sera généré notre code JS (distribution)
 
-    "forceConsistentCasingInFileNames": true, // Éviter les problèmes de casing dans les noms de fichier
-    "rewriteRelativeImportExtensions": true, // Autoriser les imports avec l'extension .ts
+		"forceConsistentCasingInFileNames": true, // Éviter les problèmes de casing dans les noms de fichier
+		"rewriteRelativeImportExtensions": true, // Autoriser les imports avec l'extension .ts
 
-    "strict": true, // Règle de syntaxe TS à respecter
-    "erasableSyntaxOnly": true, // Utiliser uniquement la syntaxe supportées par Node.js (pas d'enum, décorateurs...)
-    "verbatimModuleSyntax": true, // Avoir les imports de type via `import type`
+		"strict": true, // Règle de syntaxe TS à respecter
+		"verbatimModuleSyntax": true, // Avoir les imports de type via `import type`
 
-    "skipLibCheck": true // Ne pas checker le code TS des fichier .d.ts
-  }
+		"skipLibCheck": true // Ne pas checker le code TS des fichier .d.ts
+	}
 }
