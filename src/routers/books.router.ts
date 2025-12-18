@@ -177,7 +177,7 @@ router.get("/books/:id", getUser, getBookById);
  *               items:
  *                 $ref: '#/components/schemas/Comment'
  */
-router.get("/books/:bookId/comments", getCommentsByBook);
+router.get("/books/:bookId/comments", getUser, getCommentsByBook);
 
 /**
  * @swagger

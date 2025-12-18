@@ -1,37 +1,34 @@
-import argon2 from "argon2";
 import z from "zod";
 import { getPrisma } from "../models/index.ts";
 import type { Request, Response } from "express";
-import crypto from "crypto";
-import { Resend } from "resend";
+import crypto from "node:crypto";
 import sanitizeHtml from "sanitize-html";
-import { passwordValidationSchema } from "../lib/utils.ts";
+import {
+	passwordValidationSchema,
+	registerSchema,
+	loginSchema,
+	updateUserSchema,
+} from "../schemas/auth.schema.ts";
 import {
 	BadRequestError,
 	NotFoundError,
-	ForbiddenError,
 	UnauthorizedError,
 } from "../lib/error.ts";
-import {
-	generateAccessToken,
-	generateRefreshToken,
-	setTokensInCookies,
-} from "../lib/token.ts";
+import { createSession } from "../lib/token.ts";
 import {
 	generateDiceBearAvatar,
 	generateRandomAvatarSeed,
+	verifyAvatar,
 } from "../lib/dicebear.ts";
-import { googleClient, googleCLientID } from "../lib/googleClient.ts";
 import { checkUniqueUser } from "../lib/auth.ts";
-
-// Get Resend config (API key, domain name)
-const resendApiKey = process.env.RESEND_API_KEY;
-const resendDomainName = process.env.RESEND_DOMAIN_NAME;
-
-if (!resendApiKey) console.warn("⚠️ Resend API key not set in .env");
-if (!resendDomainName) console.warn("⚠️ Resend domain name not set in .env");
-
-const resend = new Resend(resendApiKey);
+import {
+	validatePasswordChange,
+	hashPassword,
+	verifyPassword,
+	generateResetToken,
+} from "../lib/password.ts";
+import { loginWithGoogle, googleCodeSchema } from "../lib/googleAuth.ts";
+import { sendResetPasswordEmail } from "../lib/email.ts";
 
 const prisma = getPrisma();
 
@@ -39,16 +36,8 @@ const prisma = getPrisma();
 // ----- POST /api/auth/register -----
 // -----------------------------------
 export async function registerUser(req: Request, res: Response) {
-	// Validate request body
-	const registerUserBodySchema = z.object({
-		username: z.string().min(1),
-		email: z.email(),
-		password: passwordValidationSchema,
-		confirmPassword: passwordValidationSchema,
-	});
-
 	const { username, email, password, confirmPassword } =
-		await registerUserBodySchema.parseAsync(req.body);
+		await registerSchema.parseAsync(req.body);
 
 	// Check if email or username already exists
 	if (email || username) {
@@ -60,7 +49,7 @@ export async function registerUser(req: Request, res: Response) {
 		throw new BadRequestError("Password and confirm password do not match");
 	}
 
-	const hashedPassword = await argon2.hash(password);
+	const hashedPassword = await hashPassword(password);
 
 	// Generate DiceBear avatar SVG based on username (or custom seed if available)
 	const avatarSeed = req.body.avatar_seed || username;
@@ -91,13 +80,7 @@ export async function registerUser(req: Request, res: Response) {
 // ------ POST /api/auth/login ------
 // ----------------------------------
 export async function loginUser(req: Request, res: Response) {
-	// Validate credentials
-	const loginBodySchema = z.object({
-		email: z.email(),
-		password: z.string(),
-	});
-
-	const { email, password } = await loginBodySchema.parseAsync(req.body);
+	const { email, password } = await loginSchema.parseAsync(req.body);
 
 	// Find user from the DB
 	const user = await prisma.users.findUnique({ where: { email } });
@@ -114,17 +97,10 @@ export async function loginUser(req: Request, res: Response) {
 	}
 
 	// Verify password
-	const isMatching = await argon2.verify(user.password, password);
-	if (!isMatching) {
-		throw new BadRequestError("Email and password do not match");
-	}
+	await verifyPassword(user.password, password);
 
-	// Generate tokens
-	const accessToken = generateAccessToken(user);
-	const refreshToken = await generateRefreshToken(user);
-
-	// Send tokens via cookies
-	setTokensInCookies(res, accessToken, refreshToken);
+	// Generate tokens and send them via cookies
+	await createSession(res, user);
 
 	res.status(200).send();
 }
@@ -133,78 +109,11 @@ export async function loginUser(req: Request, res: Response) {
 // --- POST /api/auth/google --------
 // ----------------------------------
 export async function googleAuth(req: Request, res: Response) {
-	// 1. Validate request body
-	const bodySchema = z.object({
-		code: z.string().min(1),
-	});
+	const { code } = await googleCodeSchema.parseAsync(req.body);
 
-	const { code } = await bodySchema.parseAsync(req.body);
+	// Use helper to handle Google login & session creation
+	await loginWithGoogle(code, res);
 
-	// 2. Exchange code for tokens
-	const { tokens } = await googleClient.getToken({
-		code,
-		redirect_uri: `${process.env.FRONTEND_URL}/auth/google/callback`,
-	});
-	const idToken = tokens.id_token;
-
-	if (!idToken) {
-		throw new BadRequestError("Invalid Google authorization code");
-	}
-
-	// 3. Verify ID token
-	const ticket = await googleClient.verifyIdToken({
-		idToken,
-		audience: googleCLientID,
-	});
-
-	const payload = ticket.getPayload();
-	if (!payload?.email) {
-		console.error("Google login failed: Invalid Google token payload", payload);
-		throw new BadRequestError("Invalid Google token payload");
-	}
-
-	const email = payload.email;
-	const baseUsername =
-		payload.name?.replace(/\s+/g, "").toLowerCase() ?? email.split("@")[0];
-	let username = baseUsername;
-
-	// 4. Find or create user
-	let user = await prisma.users.findUnique({ where: { email } });
-
-	if (!user) {
-		// Only append counter if base username already exists
-		const existingUser = await prisma.users.findUnique({
-			where: { username: baseUsername },
-		});
-		if (existingUser) {
-			let counter = 1;
-			while (
-				await prisma.users.findUnique({
-					where: { username: `${baseUsername}${counter}` },
-				})
-			) {
-				counter++;
-			}
-			username = `${baseUsername}${counter}`;
-		}
-
-		user = await prisma.users.create({
-			data: {
-				email,
-				username,
-				password: null, // Google-authenticated users
-			},
-		});
-	}
-
-	// 5. Generate tokens (same as login)
-	const accessToken = generateAccessToken(user);
-	const refreshToken = await generateRefreshToken(user);
-
-	// 6. Send cookies
-	setTokensInCookies(res, accessToken, refreshToken);
-
-	// 7. Done
 	res.status(200).send();
 }
 
@@ -221,8 +130,9 @@ export async function getCurrentUser(req: Request, res: Response) {
 			id: true,
 			email: true,
 			username: true,
+			first_name: true,
+			last_name: true,
 			created_at: true,
-			updated_at: true,
 			avatar_url: true,
 			avatar_seed: true,
 			role: true,
@@ -239,25 +149,13 @@ export async function getCurrentUser(req: Request, res: Response) {
 
 	// If user doesn't have an avatar_url, generate one
 	let finalUser = user;
-
-	if (!user.avatar_url) {
-		const avatarSeed = user.avatar_seed || user.username;
-		const generatedAvatarSvg = generateDiceBearAvatar(avatarSeed);
-
-		finalUser = await prisma.users.update({
-			where: { id: userId },
-			data: {
-				avatar_url: generatedAvatarSvg,
-				avatar_seed: user.avatar_seed ?? avatarSeed,
-			},
-		});
-	}
+	if (!user.avatar_url)
+		finalUser = await verifyAvatar(user.id, user.username, user.avatar_seed);
 
 	// Send user object without password + with hasPassword
-	res.json({
-		...finalUser,
-		hasPassword,
-	});
+	// biome-ignore lint/correctness/noUnusedVariables: deconstruct password to remove it only
+	const { password, ...userWithoutPassword } = finalUser;
+	res.json({ ...userWithoutPassword, hasPassword });
 }
 
 // -----------------------------------
@@ -283,18 +181,6 @@ export async function updateCurrentUser(req: Request, res: Response) {
 
 	if (!userId) throw new UnauthorizedError("User id is missing");
 
-	// Schema
-	const updateUserBodySchema = z.object({
-		username: z.string().min(1).optional(),
-		email: z.email().optional(),
-		last_name: z.string().optional(),
-		first_name: z.string().optional(),
-		avatar_url: z.url().optional(),
-		currentPassword: passwordValidationSchema.optional(),
-		newPassword: passwordValidationSchema.optional(),
-		confirmPassword: passwordValidationSchema.optional(),
-	});
-
 	const {
 		username,
 		email,
@@ -304,7 +190,7 @@ export async function updateCurrentUser(req: Request, res: Response) {
 		currentPassword,
 		newPassword,
 		confirmPassword,
-	} = await updateUserBodySchema.parseAsync(req.body);
+	} = await updateUserSchema.parseAsync(req.body);
 
 	// Check email and username uniqueness
 	if (email || username) {
@@ -322,23 +208,13 @@ export async function updateCurrentUser(req: Request, res: Response) {
 
 	// Password update / creation logic
 	if (newPassword && confirmPassword) {
-		// If user has a password, currentPassword is required
-		if (user.password) {
-			if (!currentPassword)
-				throw new BadRequestError("Current password is required");
-			const match = await argon2.verify(user.password, currentPassword);
-			if (!match) throw new ForbiddenError("Current password is incorrect");
-		}
-
-		// Confirm check
-		if (newPassword !== confirmPassword) {
-			throw new BadRequestError(
-				"New password and confirm password do not match",
-			);
-		}
-
-		// Hash new pwd
-		hashedPassword = await argon2.hash(newPassword);
+		hashedPassword = await validatePasswordChange({
+			userHasPassword: !!user.password,
+			storedPassword: user.password,
+			currentPassword,
+			newPassword,
+			confirmPassword,
+		});
 	}
 
 	// Update
@@ -429,12 +305,7 @@ export async function forgotPassword(req: Request, res: Response) {
 		}
 
 		// Generate secure reset token
-		const token = crypto.randomBytes(32).toString("hex");
-		const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-
-		// Token expiration (30 minutes)
-		const expiresAt = new Date();
-		expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+		const { token, tokenHash, expiresAt } = await generateResetToken();
 
 		await prisma.resetPasswordToken.deleteMany({
 			where: { userId: user.id },
@@ -451,24 +322,9 @@ export async function forgotPassword(req: Request, res: Response) {
 		// Password reset link (local dev)
 		const resetLink = `${process.env.FRONTEND_URL}/login/reset-password?token=${token}`;
 
-		console.log("🔐 Password reset link (dev only)");
-		console.log(resetLink);
-
+		// Sanitize email and send mail
 		const safeEmail = sanitizeHtml(email);
-
-		await resend.emails.send({
-			from: `no-reply@${resendDomainName}`,
-			to: safeEmail,
-			subject: "Réinitialisation de votre mot de passe",
-			html: `
-				<h1>Réinitialisation du mot de passe</h1>
-				<p>Vous avez demandé à réinitialiser votre mot de passe.</p>
-				<p>Cliquez sur ce lien pour choisir un nouveau mot de passe :</p>
-				<p><a href="${resetLink}">${resetLink}</a></p>
-				<p>Ce lien expire dans 30 minutes.</p>
-				<p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
-			`,
-		});
+		await sendResetPasswordEmail(safeEmail, resetLink);
 
 		return res.status(204).send();
 	} catch (error) {
@@ -489,8 +345,9 @@ export async function resetPassword(req: Request, res: Response) {
 		confirmPassword: passwordValidationSchema,
 	});
 
-	const { token, password, confirmPassword } =
-		await bodySchema.parseAsync(req.body);
+	const { token, password, confirmPassword } = await bodySchema.parseAsync(
+		req.body,
+	);
 
 	// Check if password and confirmPassword match
 	if (password !== confirmPassword) {
@@ -512,7 +369,7 @@ export async function resetPassword(req: Request, res: Response) {
 		throw new BadRequestError("Invalid or expired token");
 	}
 
-	const hashedPassword = await argon2.hash(password);
+	const hashedPassword = await hashPassword(password);
 
 	await prisma.users.update({
 		where: { id: resetTokenRow.userId },

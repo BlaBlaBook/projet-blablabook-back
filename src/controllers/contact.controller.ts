@@ -1,20 +1,7 @@
 import type { Request, Response } from "express";
-import { Resend } from "resend";
 import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
-
-// Get Resend config (API key, domain name, email receiver)
-const resendApiKey = process.env.RESEND_API_KEY;
-const resendDomainName = process.env.RESEND_DOMAIN_NAME;
-const resendEmailReceiver = process.env.RESEND_EMAIL_RECEIVER;
-
-// Warn if env vars are missing
-if (!resendApiKey) console.warn("⚠️ Resend API key not set in .env");
-if (!resendDomainName) console.warn("⚠️ Resend domain name not set in .env");
-if (!resendEmailReceiver) console.warn("⚠️ Resend email receiver not set in .env");
-
-// Create a new resend client
-const resend = new Resend(resendApiKey);
+import { sendContactEmail } from "../lib/email.ts";
 
 // Zod schema for validating inputs
 const contactSchema = z.object({
@@ -39,16 +26,8 @@ export async function sendMessage(req: Request, res: Response) {
 	const safeMessage = sanitizeHtml(message).replace(/\n/g, "<br>");
 
   // 3. Send email
-	await resend.emails.send({
-		from: `contact@${resendDomainName}`,
-		to: `${resendEmailReceiver}`,
-		subject: safeSubject,
-		html: `
-        <h1>New Contact Message</h1>
-        <p><strong>Email:</strong> ${safeEmail}</p>
-        <p><strong>Message:</strong><br/>${safeMessage}</p>
-      `,
-	});
+	await sendContactEmail(safeEmail, safeSubject, safeMessage)
 
+	// 4. send success res to client
 	return res.status(200).json({ success: true });
 }
