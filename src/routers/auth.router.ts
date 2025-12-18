@@ -114,6 +114,8 @@ router.post("/auth/register", registerUser);
  */
 router.post("/auth/login", loginUser);
 /**
+ * /api/auth/google:
+ */
 router.post("/auth/google", googleAuth);
 
 /**
