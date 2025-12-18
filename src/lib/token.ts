@@ -101,3 +101,16 @@ export function setTokensInCookies(
 		secure: isProd,
 	});
 }
+
+// ----------------------------
+// ----- Create session -------
+// ----------------------------
+export async function createSession(
+  res: Response,
+  user: users,
+) {
+  const accessToken = generateAccessToken(user);
+  const refreshToken = await generateRefreshToken(user);
+
+  setTokensInCookies(res, accessToken, refreshToken);
+}
