@@ -1,8 +1,9 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  test: {
-    globals: true,
-    setupFiles: ["./tests/setup/vitest.setup.ts"],
-  },
+	test: {
+		globals: true,
+		setupFiles: ["./tests/setup/vitest.setup.ts"],
+		fileParallelism: false,
+	},
 });
