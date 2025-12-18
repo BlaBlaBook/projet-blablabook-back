@@ -3,11 +3,16 @@ import request from "supertest";
 import { getPrisma } from "../../src/models/index.ts";
 import { createTestApp } from "../setup/createTestApp.ts";
 import { getOrCreateTestUser } from "../utils/mockUser.ts";
+import { resetDb } from "../setup/resetDb.ts";
 
 const prisma = getPrisma();
 const app = createTestApp();
 
 describe("User Stats API", () => {
+	beforeEach(async () => {
+		await resetDb(prisma);
+	});
+
 	it("GET /users/stats returns comment and reply counts", async () => {
 		// ARRANGE
 		const testUser = await getOrCreateTestUser();

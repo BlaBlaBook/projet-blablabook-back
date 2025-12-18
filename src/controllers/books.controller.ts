@@ -1,10 +1,15 @@
 import type { Request, Response } from "express";
 import { getPrisma } from "../models/index.ts";
-import type { booksWhereInput } from "../../generated/prisma/models.ts";
 import { parseIdFromParams } from "../lib/utils.ts";
-import { ConflictError, NotFoundError } from "../lib/error.ts";
+import { NotFoundError } from "../lib/error.ts";
 import { createBookSchema, updateBookSchema } from "../schemas/books.schema.ts";
-import { normalizeQueryParam } from "../lib/query.ts";
+import {
+	formatBook,
+	getUserRecordsInclude,
+	assertBooksIsbnUnique,
+	fetchBookWithRelations,
+	buildBookFilters
+} from "../lib/books.ts";
 
 const prisma = getPrisma();
 
@@ -14,95 +19,30 @@ const prisma = getPrisma();
 export async function getAllBooks(req: Request, res: Response) {
 	const userId = req.userId;
 
-	// Pagination / offset
-	const limit = req.query.limit ? Number(req.query.limit) : 20;
-	const offset = req.query.offset ? Number(req.query.offset) : 0;
+	const limit = Number(req.query.limit ?? 20);
+	const offset = Number(req.query.offset ?? 0);
 
-	// Filters sent from frontend
-	const authorIds = normalizeQueryParam(req.query.authorIds);
-	const genreIds = normalizeQueryParam(req.query.genreIds);
-
-	// Years range
-	const yearMin = req.query.yearMin ? Number(req.query.yearMin) : undefined;
-	const yearMax = req.query.yearMax ? Number(req.query.yearMax) : undefined;
-
-	// Search bar (title)
-	const search = req.query.search as string | undefined;
-
-	// Group all filters in an object
-	const where: booksWhereInput = {};
-
-	// Filtre Prisma
-	if (authorIds.length > 0) {
-		where.authors = {
-			some: { author_id: { in: authorIds } },
-		};
-	}
-
-	// Filter by genre Id
-	if (genreIds.length > 0) {
-		where.genres = { some: { genre_id: { in: genreIds } } };
-	}
-
-	// Years min/max
-	if (yearMin || yearMax) {
-		where.year = {};
-
-		if (yearMin) where.year.gte = yearMin;
-		if (yearMax) where.year.lte = yearMax;
-	}
-
-	// Search by title
-	if (search) {
-		where.title = {
-			contains: search,
-			mode: "insensitive",
-		};
-	}
+	const where = buildBookFilters(req);
 
 	// Prisma query
-	const books = await prisma.books.findMany({
-		where,
-		skip: offset,
-		take: limit,
-		include: {
-			authors: { include: { author: true } },
-			genres: { include: { genre: true } },
-			userRecords: userId
-				? {
-						where: { user_id: userId },
-						select: { reading_status: true },
-					}
-				: false,
-		},
-	});
-
-	// Total count of books returned
-	const total = await prisma.books.count({ where });
+	const [books, total] = await Promise.all([
+		prisma.books.findMany({
+			where,
+			skip: offset,
+			take: limit,
+			include: {
+				authors: { include: { author: true } },
+				genres: { include: { genre: true } },
+				userRecords: getUserRecordsInclude(userId),
+			},
+		}),
+		prisma.books.count({ where }),
+	]);
 
 	// Build res for client
-	const formattedBooks = books.map((b) => ({
-		id: b.id,
-		isbn: b.isbn,
-		title: b.title,
-		year: b.year,
-		summary: b.summary,
-		language: b.language,
-		pages: b.pages,
-		image_url: b.image_url,
-		authors: b.authors.map((ba) => ({
-			id: ba.author.id,
-			first_name: ba.author.first_name,
-			last_name: ba.author.last_name,
-		})),
-		genres: b.genres.map((bg) => ({
-			id: bg.genre.id,
-			category: bg.genre.category,
-		})),
-		reading_status: b.userRecords?.[0]?.reading_status ?? null,
-		created_at: b.created_at,
-		updated_at: b.updated_at,
-	}));
+	const formattedBooks = books.map((b) =>
+		formatBook(b, { includeUser: !!userId }),
+	);
 
 	// Send res
 	res.json({
@@ -122,48 +62,10 @@ export async function getBookById(req: Request, res: Response) {
 	const userId = req.userId;
 
 	// Fetch the book by ID with authors, genres, and optionally user's reading_status
-	const book = await prisma.books.findUnique({
-		where: { id: bookId },
-		include: {
-			authors: { include: { author: true } },
-			genres: { include: { genre: true } },
-			userRecords: userId
-				? {
-						where: { user_id: userId },
-						select: { reading_status: true, rating: true },
-					}
-				: false,
-		},
-	});
+	const book = await fetchBookWithRelations(bookId, userId);
 
-	if (!book) throw new NotFoundError("Book not found");
-
-	// Format the book object
-	const formattedBook = {
-		id: book.id,
-		isbn: book.isbn,
-		title: book.title,
-		year: book.year,
-		summary: book.summary,
-		language: book.language,
-		pages: book.pages,
-		image_url: book.image_url,
-		authors: book.authors.map((ba) => ({
-			id: ba.author.id,
-			first_name: ba.author.first_name,
-			last_name: ba.author.last_name,
-		})),
-		genres: book.genres.map((bg) => ({
-			id: bg.genre.id,
-			category: bg.genre.category,
-		})),
-		reading_status: book.userRecords?.[0]?.reading_status ?? null,
-		user_rating: book.userRecords?.[0]?.rating ?? null,
-		created_at: book.created_at,
-		updated_at: book.updated_at,
-	};
-
-	res.json(formattedBook);
+	// Format response and send
+	res.json(formatBook(book, { includeUser: !!userId }));
 }
 
 // -----------------------------
@@ -174,6 +76,52 @@ export async function createBook(req: Request, res: Response) {
 
 	await assertBooksIsbnUnique(data.isbn);
 
+	// Only keep authors with id OR first_name + last_name
+	const authorsToCreate = data.authors
+		.map((a) => {
+			if (a.id) {
+				return { author: { connect: { id: a.id } } };
+			}
+			// Type guard: we know first_name and last_name exist
+			if (a.first_name && a.last_name) {
+				return {
+					author: {
+						connectOrCreate: {
+							where: {
+								first_name_last_name: {
+									first_name: a.first_name,
+									last_name: a.last_name,
+								},
+							},
+							create: { first_name: a.first_name, last_name: a.last_name },
+						},
+					},
+				};
+			}
+			// Skip invalid authors
+			return null;
+		})
+		.filter((a): a is NonNullable<typeof a> => !!a);
+
+	// Same for genres
+	const genresToCreate = data.genres
+		.map((g) => {
+			if (g.id) return { genre: { connect: { id: g.id } } };
+			if (g.category) {
+				return {
+					genre: {
+						connectOrCreate: {
+							where: { category: g.category },
+							create: { category: g.category },
+						},
+					},
+				};
+			}
+			return null;
+		})
+		.filter((g): g is NonNullable<typeof g> => !!g);
+
+	// Then pass to Prisma
 	const newBook = await prisma.books.create({
 		data: {
 			isbn: data.isbn,
@@ -183,38 +131,8 @@ export async function createBook(req: Request, res: Response) {
 			language: data.language,
 			pages: data.pages,
 			image_url: data.image_url,
-			authors: {
-				create: data.authors.map((a) => ({
-					author: a.id
-						? { connect: { id: a.id } }
-						: {
-								connectOrCreate: {
-									where: {
-										first_name_last_name: {
-											first_name: a.first_name!,
-											last_name: a.last_name!,
-										},
-									},
-									create: {
-										first_name: a.first_name!,
-										last_name: a.last_name!,
-									},
-								},
-							},
-				})),
-			},
-			genres: {
-				create: data.genres.map((g) => ({
-					genre: g.id
-						? { connect: { id: g.id } }
-						: {
-								connectOrCreate: {
-									where: { category: g.category! },
-									create: { category: g.category! },
-								},
-							},
-				})),
-			},
+			authors: { create: authorsToCreate },
+			genres: { create: genresToCreate },
 		},
 		include: {
 			authors: { include: { author: true } },
@@ -223,19 +141,7 @@ export async function createBook(req: Request, res: Response) {
 	});
 
 	// Format response to hide pivot tables
-	const formattedBook = {
-		...newBook,
-		authors: newBook.authors.map((ba) => ({
-			id: ba.author.id,
-			first_name: ba.author.first_name,
-			last_name: ba.author.last_name,
-		})),
-		genres: newBook.genres.map((bg) => ({
-			id: bg.genre.id,
-			category: bg.genre.category,
-		})),
-	};
-
+	const formattedBook = formatBook(newBook);
 	res.status(201).json(formattedBook);
 }
 
@@ -255,134 +161,101 @@ export async function updateBook(req: Request, res: Response) {
 		await assertBooksIsbnUnique(updateData.isbn);
 	}
 
-	// Prepare update data
 	const { authors, genres, ...bookFields } = updateData;
 
-	// Use transaction to ensure consistency
 	const updatedBook = await prisma.$transaction(async (tx) => {
-		// 1. Update base book fields
-		const book = await tx.books.update({
-			where: { id: bookId },
-			data: bookFields,
-		});
+		// Update base book fields
+		await tx.books.update({ where: { id: bookId }, data: bookFields });
 
-		// 2. Handle authors if provided
+		// Handle authors
 		if (authors) {
-			// Delete all existing relations
-			await tx.book_author.deleteMany({
-				where: { book_id: bookId },
-			});
+			await tx.book_author.deleteMany({ where: { book_id: bookId } });
 
-			// Separate existing and new authors
-			const existingAuthors = authors.filter((a) => a.id);
-			const newAuthors = authors.filter((a) => !a.id);
+			// Existing authors
+			const existingAuthors = authors.filter(
+				(a): a is { id: string } => !!a.id,
+			);
 
-			// Create relations with existing authors
-			if (existingAuthors.length > 0) {
+			if (existingAuthors.length) {
 				await tx.book_author.createMany({
 					data: existingAuthors.map((a) => ({
 						book_id: bookId,
-						author_id: a.id!,
+						author_id: a.id,
 					})),
 				});
 			}
 
-			// Create new authors and their relations
+			// New authors
+			const newAuthors = authors.filter(
+				(a): a is { first_name: string; last_name: string } =>
+					!a.id && !!a.first_name && !!a.last_name,
+			);
+
 			for (const author of newAuthors) {
 				const newAuthor = await tx.authors.create({
 					data: {
-						first_name: author.first_name!,
-						last_name: author.last_name!,
+						first_name: author.first_name,
+						last_name: author.last_name,
 					},
 				});
 
 				await tx.book_author.create({
-					data: {
-						book_id: bookId,
-						author_id: newAuthor.id,
-					},
+					data: { book_id: bookId, author_id: newAuthor.id },
 				});
 			}
 		}
 
-		// 3. Handle genres if provided
+		// Handle genres
 		if (genres) {
-			// Delete all existing relations
-			await tx.book_genre.deleteMany({
-				where: { book_id: bookId },
-			});
+			await tx.book_genre.deleteMany({ where: { book_id: bookId } });
 
-			// Separate existing and new genres
-			const existingGenres = genres.filter((g) => g.id);
-			const newGenres = genres.filter((g) => !g.id);
-
-			// Create relations with existing genres
-			if (existingGenres.length > 0) {
+			// Existing genres (by id)
+			const existingGenres = genres.filter((g): g is { id: string } => !!g.id);
+			if (existingGenres.length) {
 				await tx.book_genre.createMany({
 					data: existingGenres.map((g) => ({
 						book_id: bookId,
-						genre_id: g.id!,
+						genre_id: g.id,
 					})),
 				});
 			}
 
-			// Create new genres and their relations (FIX HERE)
+			// New genres (must have category)
+			const newGenres = genres.filter(
+				(g): g is { category: string } => !g.id && !!g.category,
+			);
+
 			for (const genre of newGenres) {
-				// Use upsert to handle existing genres
 				const existingGenre = await tx.genres.findUnique({
-					where: { category: genre.category! },
+					where: { category: genre.category },
 				});
 
-				const genreId = existingGenre
-					? existingGenre.id
-					: (
-							await tx.genres.create({
-								data: { category: genre.category! },
-							})
-						).id;
+				const genreId =
+					existingGenre?.id ??
+					(await tx.genres.create({ data: { category: genre.category } })).id;
 
 				await tx.book_genre.create({
-					data: {
-						book_id: bookId,
-						genre_id: genreId,
-					},
+					data: { book_id: bookId, genre_id: genreId },
 				});
 			}
 		}
 
-		// 4. Fetch complete book with all relations
-		return await tx.books.findUnique({
+		// Fetch updated book with relations
+		const bookWithRelations = await tx.books.findUnique({
 			where: { id: bookId },
 			include: {
 				authors: { include: { author: true } },
 				genres: { include: { genre: true } },
 			},
 		});
+
+		if (!bookWithRelations) throw new NotFoundError("Updated book not found");
+		return bookWithRelations;
 	});
 
-	// Format response
-	const formattedBook = {
-		id: updatedBook!.id,
-		isbn: updatedBook!.isbn,
-		title: updatedBook!.title,
-		year: updatedBook!.year,
-		summary: updatedBook!.summary,
-		language: updatedBook!.language,
-		pages: updatedBook!.pages,
-		image_url: updatedBook!.image_url,
-		authors: updatedBook!.authors.map((ba) => ({
-			id: ba.author.id,
-			first_name: ba.author.first_name,
-			last_name: ba.author.last_name,
-		})),
-		genres: updatedBook!.genres.map((bg) => ({
-			id: bg.genre.id,
-			category: bg.genre.category,
-		})),
-		created_at: updatedBook!.created_at,
-		updated_at: updatedBook!.updated_at,
-	};
+	const formattedBook = formatBook(updatedBook);
 
+	// Format response
 	res.json(formattedBook);
 }
 
@@ -399,9 +272,9 @@ export async function deleteBook(req: Request, res: Response) {
 	res.status(204).send();
 }
 
-// -----------------------------
+// ---------------------------------
 // --- GET /api/books/:id/rating ---
-// -----------------------------
+// ---------------------------------
 export async function getBookRating(req: Request, res: Response) {
 	const bookId = await parseIdFromParams(req.params.id);
 
@@ -419,18 +292,8 @@ export async function getBookRating(req: Request, res: Response) {
 	const sum = ratings.reduce((acc, curr) => acc + (curr.rating || 0), 0);
 	const averageRating = sum / ratings.length;
 
-	res.json({ 
-		averageRating: parseFloat(averageRating.toFixed(1)), 
-		count: ratings.length 
+	res.json({
+		averageRating: parseFloat(averageRating.toFixed(1)),
+		count: ratings.length,
 	});
-}
-
-// ---------------------------
-// --------- helpers ---------
-// ---------------------------
-// Utility to ensure ISBN is unique
-async function assertBooksIsbnUnique(isbn: string) {
-	const existingBook = await prisma.books.findUnique({ where: { isbn } });
-	if (existingBook)
-		throw new ConflictError("A book with this ISBN already exists");
 }

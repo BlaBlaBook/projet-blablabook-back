@@ -10,7 +10,7 @@ export const router = Router();
 router.get("/books", getUser, getAllBooks);
 router.get("/books/lookup", searchGoogleBooks);
 router.get("/books/:id", getUser, getBookById);
-router.get("/books/:bookId/comments", getCommentsByBook);
+router.get("/books/:bookId/comments", getUser, getCommentsByBook);
 router.post("/books", createBook);
 router.post("/books/:bookId/comments", isAuth, addComment);
 router.post("/books/:bookId/comments/:commentId/like", isAuth, toggleCommentLike);
