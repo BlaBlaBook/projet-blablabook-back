@@ -1,10 +1,6 @@
 import type { Request, Response } from "express";
 import { getPrisma } from "../models/index.ts";
-import {
-	NotFoundError,
-	UnauthorizedError,
-	BadRequestError,
-} from "../lib/error.ts";
+import { NotFoundError, UnauthorizedError, BadRequestError, ForbiddenError } from "../lib/error.ts";
 
 const prisma = getPrisma();
 
@@ -206,4 +202,57 @@ export async function toggleCommentLike(req: Request, res: Response) {
 		});
 		return res.json({ liked: true });
 	}
+}
+
+export async function deleteCommentById(req: Request, res: Response) {
+  const { bookId, commentId } = req.params;
+
+  // Check if comment exists
+  const comment = await prisma.comments.findUnique({ 
+    where: { id: commentId, book_id: bookId, } });
+
+  if (!comment) {
+    throw new NotFoundError("Commentaire introuvable");
+  }
+
+  // Delete the comment
+  await prisma.comments.delete({ 
+    where: { id: commentId } 
+  });
+
+  res.status(204).send();
+}
+
+export async function updateCommentById(req: Request, res: Response) {
+  const { commentId } = req.params;
+  const { content } = req.body;
+  
+  if (!content || !content.trim()) {
+    throw new BadRequestError("Contenu invalide");
+  }
+
+  const comment = await prisma.comments.findUnique({
+    where: {
+      id: commentId,
+    },
+  });
+
+  if (!comment) {
+    throw new NotFoundError("Commentaire introuvable");
+  }
+
+  // Sécurité: auteur OU admin
+  const isOwner = req.userId === comment.user_id;
+  const isAdmin = req.userRole === "admin";
+
+  if (!isOwner && !isAdmin) {
+    throw new ForbiddenError("Modification non autorisée");
+  }
+
+  const updatedComment = await prisma.comments.update({
+    where: { id: commentId },
+    data: { content },
+  });
+
+  res.json(updatedComment);
 }

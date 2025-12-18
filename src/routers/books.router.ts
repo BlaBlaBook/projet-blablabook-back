@@ -2,8 +2,9 @@ import { Router } from "express";
 import { createBook, deleteBook, getAllBooks, getBookById, updateBook, getBookRating } from "../controllers/books.controller.ts";
 import { getUser } from "../middlewares/getUser.ts";
 import { searchGoogleBooks } from "../controllers/booksSearch.controller.ts";
-import { addComment, getCommentsByBook, toggleCommentLike } from "../controllers/comments.controller.ts";
+import { addComment, deleteCommentById, getCommentsByBook, toggleCommentLike, updateCommentById } from "../controllers/comments.controller.ts";
 import { isAuth } from "../middlewares/isAuth.middleware.ts";
+import { isAdmin } from "../middlewares/isAdmin.middleware.ts";
 
 /**
  * @swagger
@@ -419,7 +420,7 @@ router.post("/books/:bookId/comments/:commentId/like", isAuth, toggleCommentLike
  *       404:
  *         description: Book not found
  */
-router.patch("/books/:id", updateBook);
+router.patch("/books/:id", isAdmin, updateBook);
 
 /**
  * @swagger
@@ -441,7 +442,7 @@ router.patch("/books/:id", updateBook);
  *       404:
  *         description: Book not found
  */
-router.delete("/books/:id", deleteBook);
+router.delete("/books/:id", isAdmin, deleteBook);
 
 /**
  * @swagger
