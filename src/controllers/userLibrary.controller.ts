@@ -108,7 +108,6 @@ export async function getUserLibraryBookById(req: Request, res: Response) {
 	res.json(formattedBook);
 }
 
-
 // -----------------------------------
 // - POST /api/user-library/books/:id -
 // -----------------------------------
@@ -146,9 +145,9 @@ export async function addBookToUserLibrary(req: Request, res: Response) {
 
 // Mapping front -> Prisma
 const frontToPrismaStatusMap = {
-  "à lire": "à_lire",
-  "en cours": "en_cours",
-  "lu": "lu",
+	"à lire": "à_lire",
+	"en cours": "en_cours",
+	lu: "lu",
 } as const;
 
 // -----------------------------------
@@ -157,7 +156,9 @@ const frontToPrismaStatusMap = {
 export async function changeStatusOfBook(req: Request, res: Response) {
 	const userId = req.userId!;
 	const bookId = await parseIdFromParams(req.params.bookId);
-	const { reading_status: frontStatus } = await changeReadingStatusSchema.parseAsync(req.body);
+	const { reading_status: frontStatus } = await changeReadingStatusSchema.parseAsync(
+		req.body,
+	);
 
 	const record = await prisma.user_book_records.findFirst({
 		where: { user_id: userId, book_id: bookId },
@@ -165,7 +166,8 @@ export async function changeStatusOfBook(req: Request, res: Response) {
 	if (!record) throw new NotFoundError("Book not found in user's library");
 
 	// Map frontend status value to Prisma value
-	const prismaStatus = frontToPrismaStatusMap[frontStatus as keyof typeof frontToPrismaStatusMap];
+	const prismaStatus =
+		frontToPrismaStatusMap[frontStatus as keyof typeof frontToPrismaStatusMap];
 
 	// Update with mapped status
 	const updatedRecord = await prisma.user_book_records.update({
@@ -184,7 +186,7 @@ export async function changeStatusOfBook(req: Request, res: Response) {
 // -----------------------------------
 export async function removeBookFromUserLibrary(req: Request, res: Response) {
 	const userId = req.userId!;
-	
+
 	// Extract and validate book ID from URL params
 	const bookId = await parseIdFromParams(req.params.bookId);
 
@@ -231,4 +233,89 @@ export async function updateBookRating(req: Request, res: Response) {
 	});
 
 	res.json({ message: "Rating updated", record: updatedRecord });
+}
+
+// ------------------------------------------------------------
+// - GET /api/users/library/recommendations/dashboard (internal) -
+// ------------------------------------------------------------
+export async function getDashboardRecommendations(req: Request, res: Response) {
+	const userId = req.userId!;
+
+	const userBookRecords = await prisma.user_book_records.findMany({
+		where: { user_id: userId },
+		include: {
+			book: {
+				include: {
+					genres: { include: { genre: true } },
+				},
+			},
+		},
+	});
+
+	// If user has no books, do not return default recommendations
+	if (!userBookRecords.length) {
+		return res.json({ data: [] });
+	}
+
+	const excludedBookIds = userBookRecords.map((r) => r.book_id);
+
+	const genreCounts = new Map<string, number>();
+
+	for (const record of userBookRecords) {
+		for (const bg of record.book.genres) {
+			const category = bg.genre.category;
+			genreCounts.set(category, (genreCounts.get(category) ?? 0) + 1);
+		}
+	}
+
+	const topGenres = [...genreCounts.entries()]
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, 3)
+		.map(([category]) => category);
+
+	const whereClause: any = {};
+
+	if (excludedBookIds.length) {
+		whereClause.id = { notIn: excludedBookIds };
+	}
+
+	if (topGenres.length) {
+		whereClause.genres = {
+			some: {
+				genre: {
+					category: { in: topGenres },
+				},
+			},
+		};
+	}
+
+	const books = await prisma.books.findMany({
+		where: whereClause,
+		take: 4,
+		orderBy: { created_at: "desc" },
+		select: {
+			id: true,
+			title: true,
+			image_url: true,
+			genres: {
+				take: 1,
+				select: {
+					genre: {
+						select: {
+							category: true,
+						},
+					},
+				},
+			},
+		},
+	});
+
+	const data = books.map((b) => ({
+		id: b.id,
+		title: b.title,
+		image_url: b.image_url,
+		genre: b.genres[0]?.genre?.category ?? null,
+	}));
+
+	return res.json({ data });
 }

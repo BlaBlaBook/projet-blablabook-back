@@ -1,5 +1,13 @@
 import { Router } from "express";
-import { addBookToUserLibrary, getUserLibraryBooks, changeStatusOfBook, removeBookFromUserLibrary, getUserLibraryBookById, updateBookRating } from "../controllers/userLibrary.controller.ts";
+import {
+	addBookToUserLibrary,
+	getUserLibraryBooks,
+	changeStatusOfBook,
+	removeBookFromUserLibrary,
+	getUserLibraryBookById,
+	updateBookRating,
+	getDashboardRecommendations,
+} from "../controllers/userLibrary.controller.ts";
 import { isAuth } from "../middlewares/isAuth.middleware.ts";
 
 /**
@@ -31,6 +39,13 @@ export const router = Router();
  */
 // Récupérer tous les livres de la bibliothèque de l'utilisateur
 router.get("/users/library", isAuth, getUserLibraryBooks);
+
+// Récupérer les recommandations du dashboard (interne BDD)
+router.get(
+	"/users/library/recommendations/dashboard",
+	isAuth,
+	getDashboardRecommendations,
+);
 
 /**
  * @swagger
