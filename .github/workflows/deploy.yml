@@ -3,12 +3,24 @@ name: Deploy Blablabook API
 on:
   push:
     branches:
-      - main
+      - '**'
   workflow_dispatch:
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run tests inside docker container
+        run: npm run test
+
   deploy:
-    runs-on: ubuntu-latest  # GitHub-hosted runner
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
     steps:
       # 1️⃣ Checkout the repository

@@ -4,11 +4,14 @@ FROM node:lts
 # 2️⃣ Set working directory
 WORKDIR /app
 
-# 3️⃣ Copy package manifests
-COPY package.json package-lock.json ./
+# 3️⃣ Copy package manifests and Prisma schema
+COPY package.json package-lock.json prisma ./ 
 
 # 4️⃣ Install dependencies
 RUN npm ci
 
-# 5️⃣ Copy all source files
+# 5️⃣ Generate Prisma client
+RUN npx prisma generate
+
+# 6️⃣ Copy all other source files
 COPY . .
