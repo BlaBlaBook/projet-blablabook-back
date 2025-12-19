@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { extractAccessTokenFromRequest } from "../../src/lib/token.ts";
+import { extractAccessTokenFromRequest } from "../../../src/lib/token.ts";
 
 describe("extractAccessTokenFromRequest", () => {
 

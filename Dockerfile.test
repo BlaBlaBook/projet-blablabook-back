@@ -1,0 +1,17 @@
+# 1️⃣ Use official Node LTS image
+FROM node:lts
+
+# 2️⃣ Set working directory
+WORKDIR /app
+
+# 3️⃣ Copy package manifests and Prisma schema
+COPY package.json package-lock.json prisma ./ 
+
+# 4️⃣ Install dependencies
+RUN npm ci
+
+# 5️⃣ Generate Prisma client
+RUN npx prisma generate
+
+# 6️⃣ Copy all other source files
+COPY . .
