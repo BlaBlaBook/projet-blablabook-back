@@ -1,9 +1,10 @@
-name: Deploy Blablabook API
+name: Test & Deploy Blablabook API
 
 on:
   push:
     branches:
-      - '**'
+      - dev
+      - main
   workflow_dispatch:
 
 jobs:
