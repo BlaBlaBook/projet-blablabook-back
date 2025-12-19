@@ -24,7 +24,7 @@
     "prisma:reset": "prisma migrate reset --force",
     "dev:db": "npm run prisma:reset && npm run prisma:generate && npm run prisma:migrate && npm run dev",
     "db:seed": "node --env-file=.env ./src/models/seeding.ts",
-    "test": "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from api-test ; docker compose -f docker-compose.test.yml down -v",
+    "test": "bash ./tests/scripts/run-tests.sh",
     "test:unit": "vitest run --globals app/tests/units/**/*.test.ts",
     "test:docker": "npm run reset-test-db && vitest run --globals",
     "reset-test-db": "node --loader ts-node/esm tests/setup/reset-test-db.ts"

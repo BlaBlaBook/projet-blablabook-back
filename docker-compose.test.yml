@@ -25,11 +25,8 @@ services:
     depends_on:
       test-db:
         condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://test_user:test_password@test-db:5432/test_db
-      JWT_SECRET: testsecret
-      FRONTEND_URL: http://localhost:3000
-      NODE_ENV: test
+    env_file:
+      - .env.test
     links:
       - test-db
     command: ["npm", "run", "test:docker"]
