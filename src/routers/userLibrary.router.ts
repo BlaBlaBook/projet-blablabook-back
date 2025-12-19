@@ -40,6 +40,44 @@ export const router = Router();
 // Récupérer tous les livres de la bibliothèque de l'utilisateur
 router.get("/users/library", isAuth, getUserLibraryBooks);
 
+/**
+ * @swagger
+ * /api/users/library/recommendations/dashboard:
+ *   get:
+ *     summary: Get personalized dashboard recommendations
+ *     description: >
+ *       Returns book recommendations based on the user's library.
+ *       Recommendations are computed from the most frequent genres
+ *       in the user's collection and exclude already owned books.
+ *     tags: [UserLibrary]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of recommended books
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "clh3j4k5l6m7n8o9p0q1"
+ *                       title:
+ *                         type: string
+ *                         example: "Le Guide du procrastinateur galactique"
+ *                       image_url:
+ *                         type: string
+ *                         example: "https://example.com/image.jpg"
+ *                       genre:
+ *                         type: string
+ *                         example: "science-fiction"
+ */
 // Récupérer les recommandations du dashboard (interne BDD)
 router.get(
 	"/users/library/recommendations/dashboard",
