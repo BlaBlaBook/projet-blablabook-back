@@ -4,22 +4,17 @@ import { getPrisma } from "../models/index.ts";
 const prisma = getPrisma();
 
 export const getUserStats = async (req: Request, res: Response) => {
-  const userId = req.userId;
+	const userId = req.userId;
 
-  try {
-    // Fetch only comments for the user
-    const comments = await prisma.comments.findMany({
-      where: { user_id: userId },
-      select: { id: true, parent_id: true },
-    });
+	// Fetch only comments for the user
+	const comments = await prisma.comments.findMany({
+		where: { user_id: userId },
+		select: { id: true, parent_id: true },
+	});
 
-    // Separate comments and replies
-    const commentsCount = comments.filter(c => !c.parent_id).length;
-    const repliesCount = comments.filter(c => c.parent_id).length;
+	// Separate comments and replies
+	const commentsCount = comments.filter((c) => !c.parent_id).length;
+	const repliesCount = comments.filter((c) => c.parent_id).length;
 
-    res.json({ commentsCount, repliesCount });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+	res.json({ commentsCount, repliesCount });
 };

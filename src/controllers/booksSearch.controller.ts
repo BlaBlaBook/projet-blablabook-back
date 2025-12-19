@@ -14,6 +14,10 @@ import {
 // --- GET /api/books/search ---------
 // -----------------------------------
 export async function searchGoogleBooks(req: Request, res: Response) {
+	// Retrieve Google Books API key from environment variables
+	const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+	if (!apiKey) throw new Error("Google Books API key not set");
+
 	// Extract query parameters: 'isbn' for exact search or 'q' for keyword search
 	const { q, isbn } = req.query as unknown as GoogleBooksQuery;
 
@@ -24,14 +28,10 @@ export async function searchGoogleBooks(req: Request, res: Response) {
 		);
 	}
 
-	// Retrieve Google Books API key from environment variables
-	const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
-	if (!apiKey) throw new Error("Google Books API key not set");
-
 	// Build search query: prefix with "isbn:" for ISBN search, otherwise use keyword
 	const searchQuery = isbn
 		? `isbn:${encodeURIComponent(isbn)}`
-		: encodeURIComponent(q!).replace(/%20/g, "+");
+		: q && encodeURIComponent(q).replace(/%20/g, "+");
 
 	// Construct the Google Books API URL
 	const url = `https://www.googleapis.com/books/v1/volumes?q=${searchQuery}&country=FR&langRestrict=fr&orderBy=relevance&maxResults=30&key=${apiKey}`;

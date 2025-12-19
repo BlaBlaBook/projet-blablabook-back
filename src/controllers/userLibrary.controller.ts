@@ -10,8 +10,7 @@ const prisma = getPrisma();
 // --- GET /api/user-library/books ---
 // -----------------------------------
 export async function getUserLibraryBooks(req: Request, res: Response) {
-	// userId guaranteed by isAuth middleware
-	const userId = req.userId!;
+	const userId = req.userId;
 
 	// Fetch all user's book records from database
 	const userBookRecords = await prisma.user_book_records.findMany({
@@ -63,7 +62,7 @@ export async function getUserLibraryBooks(req: Request, res: Response) {
 // -- GET /api/user-library/books/:id -
 // -----------------------------------
 export async function getUserLibraryBookById(req: Request, res: Response) {
-	const userId = req.userId!; // guaranteed by isAuth
+	const userId = req.userId;
 	const bookId = await parseIdFromParams(req.params.bookId);
 
 	// Find the book record for this user
@@ -112,7 +111,7 @@ export async function getUserLibraryBookById(req: Request, res: Response) {
 // - POST /api/user-library/books/:id -
 // -----------------------------------
 export async function addBookToUserLibrary(req: Request, res: Response) {
-	const userId = req.userId!;
+	const userId = req.userId;
 
 	// Extract and validate book ID from URL params
 	const bookId = await parseIdFromParams(req.params.bookId);
@@ -154,7 +153,7 @@ const frontToPrismaStatusMap = {
 // - PATCH /api/user-library/books/:id -
 // -----------------------------------
 export async function changeStatusOfBook(req: Request, res: Response) {
-	const userId = req.userId!;
+	const userId = req.userId;
 	const bookId = await parseIdFromParams(req.params.bookId);
 	const { reading_status: frontStatus } = await changeReadingStatusSchema.parseAsync(
 		req.body,
@@ -185,8 +184,8 @@ export async function changeStatusOfBook(req: Request, res: Response) {
 // - DELETE /api/user-library/books/:id -
 // -----------------------------------
 export async function removeBookFromUserLibrary(req: Request, res: Response) {
-	const userId = req.userId!;
-
+	const userId = req.userId;
+	
 	// Extract and validate book ID from URL params
 	const bookId = await parseIdFromParams(req.params.bookId);
 
@@ -210,7 +209,7 @@ export async function removeBookFromUserLibrary(req: Request, res: Response) {
 // - PATCH /api/user-library/books/:id/rating -
 // -----------------------------------
 export async function updateBookRating(req: Request, res: Response) {
-	const userId = req.userId!;
+	const userId = req.userId;
 	const bookId = req.params.bookId;
 	const { rating } = req.body;
 
