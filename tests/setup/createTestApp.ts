@@ -1,12 +1,23 @@
 import type { NextFunction, Request, Response } from "express";
 import { vi } from "vitest";
-import { mockUserId } from "../utils/mockUser.ts";
+import { mockUserId, mockAdminId } from "../utils/mockUser.ts";
+import { globalErrorHandler } from "../../src/middlewares/global-error-handler.middleware.ts";
 
 // ------------ Mock isAuth ------------
 vi.mock("../../src/middlewares/isAuth.middleware.ts", () => ({
   isAuth: (req: Request, _res: Response, next: NextFunction) => {
     // Set a dummy userId for tests
     req.userId = mockUserId;
+    next();
+  },
+}));
+
+// ------------ Mock isAdmin ------------
+vi.mock("../../src/middlewares/isAdmin.middleware.ts", () => ({
+  isAdmin: (req: Request, _res: Response, next: NextFunction) => {
+    // Set a dummy userId and userRole for tests
+    req.userId = mockAdminId;
+		req.userRole = "admin";
     next();
   },
 }));
@@ -35,6 +46,8 @@ export function createTestApp() {
 	app.use("/api", userLibraryRouter);
 	app.use("/api", contactRouter);
 	app.use("/api", userStatsRouter);
+
+	app.use(globalErrorHandler);
 
 	return app;
 }
