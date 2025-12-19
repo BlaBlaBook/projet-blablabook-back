@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
-import { config } from "../../config.ts";
-import { decodeJWT } from "../../src/lib/token.ts";
+import { config } from "../../../config.ts";
+import { decodeJWT } from "../../../src/lib/token.ts";
 
 describe("decodeJWT", () => {
 

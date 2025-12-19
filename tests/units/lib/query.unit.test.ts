@@ -1,4 +1,4 @@
-import { normalizeQueryParam } from "../../src/lib/query.ts";
+import { normalizeQueryParam } from "../../../src/lib/query.ts";
 
 describe("normalizeQueryParam", () => {
 
