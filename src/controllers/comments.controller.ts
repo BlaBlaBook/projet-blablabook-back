@@ -15,61 +15,6 @@ export async function getCommentsByBook(req: Request, res: Response) {
 
   const userId = req.userId;
 
-	// Check if book exists
-	const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
-	if (!bookExists) {
-		throw new NotFoundError("Book not found");
-	}
-
-	// Fetch root comments with user, likes AND the user's rating for this book
-	const rootComments = await prisma.comments.findMany({
-		where: { book_id: bookId, parent_id: null },
-		orderBy: { created_at: "desc" },
-		include: {
-			user: {
-				select: {
-					id: true,
-					username: true,
-					// Also get this user's rating for this book
-					bookRecords: {
-						where: { book_id: bookId },
-						select: { rating: true },
-					},
-				},
-			},
-			likes: true,
-			replies: {
-				include: {
-					user: {
-						select: {
-							id: true,
-							username: true,
-							bookRecords: {
-								where: { book_id: bookId },
-								select: { rating: true },
-							},
-						},
-					},
-					likes: true,
-					replies: {
-						include: {
-							user: {
-								select: {
-									id: true,
-									username: true,
-									bookRecords: {
-										where: { book_id: bookId },
-										select: { rating: true },
-									},
-								},
-							},
-							likes: true,
-						},
-					},
-				},
-			},
-		},
-	});
   // Check if book exists
   const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
   if (!bookExists) {
