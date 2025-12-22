@@ -1,9 +1,17 @@
 import type { Request, Response } from "express";
 import { getPrisma } from "../models/index.ts";
-import { NotFoundError, UnauthorizedError, BadRequestError, ForbiddenError } from "../lib/error.ts";
+import {
+	NotFoundError,
+	UnauthorizedError,
+	BadRequestError,
+	ForbiddenError,
+} from "../lib/error.ts";
 import { z } from "zod";
-import sanitizeHtml from "sanitize-html"; 
-import { addCommentSchema, updateCommentSchema } from "../schemas/comments.schema.ts";
+import sanitizeHtml from "sanitize-html";
+import {
+	addCommentSchema,
+	updateCommentSchema,
+} from "../schemas/comments.schema.ts";
 
 const prisma = getPrisma();
 
@@ -12,99 +20,98 @@ const prisma = getPrisma();
 // -----------------------------------
 export async function getCommentsByBook(req: Request, res: Response) {
 	const { bookId } = req.params;
+	const userId = req.userId;
 
-  const userId = req.userId;
+	// 1️⃣ Check if book exists
+	const bookExists = await prisma.books.findUnique({
+		where: { id: bookId },
+	});
 
-  // Check if book exists
-  const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
-  if (!bookExists) {
-    throw new NotFoundError("Livre introuvable");
-  }
-  
-  // Fetch root comments with user, likes AND the user's rating for this book
-  const rootComments = await prisma.comments.findMany({
-    where: { book_id: bookId, parent_id: null },
-    orderBy: { created_at: "desc" },
-    include: {
-      user: { 
-        select: { 
-          id: true, 
-          username: true,
-          avatar_url: true,
-          bookRecords: {
-            where: { book_id: bookId },
-            select: { rating: true }
-          }
-        } 
-      },
-      likes: true,
-      replies: {
-        include: {
-          user: { 
-            select: { 
-              id: true, 
-              username: true,
-              avatar_url: true,
-              bookRecords: {
-                where: { book_id: bookId },
-                select: { rating: true }
-              }
-            } 
-          },
-          likes: true,
-          replies: {
-            include: {
-              user: { 
-                select: { 
-                  id: true, 
-                  username: true,
-                  avatar_url: true,
-                  bookRecords: {
-                    where: { book_id: bookId },
-                    select: { rating: true }
-                  }
-                } 
-              },
-              likes: true,
-            }
-          },
-        },
-      },
-    },
-  });
+	if (!bookExists) {
+		throw new NotFoundError("Livre introuvable");
+	}
 
-  // Function to transform to frontend format with likesCount, userRating and recursion
-    function formatComment(comment: any, userId: string | undefined): any {
-        // Get user's rating (first element of bookRecords array)
-        const userRating = comment.user.bookRecords[0]?.rating ?? null;
+	// 2️⃣ Fetch ALL comments for this book (flat)
+	const comments = await prisma.comments.findMany({
+		where: { book_id: bookId },
+		orderBy: { created_at: "asc" },
+		include: {
+			user: {
+				select: {
+					id: true,
+					username: true,
+					avatar_url: true,
+					bookRecords: {
+						where: { book_id: bookId },
+						select: { rating: true },
+					},
+				},
+			},
+			likes: true,
+		},
+	});
 
-        // Only include likedByMe if user is logged in
-        const likedByMe = userId
-            ? comment.likes.some((like: any) => like.user_id === userId)
-            : undefined;
+	// 3️⃣ Format a single comment
+	function formatComment(comment: any, userId?: string) {
+		const userRating = comment.user.bookRecords[0]?.rating ?? null;
 
-        const formatted: any = {
-            id: comment.id,
-            content: comment.content,
-            created_at: comment.created_at.toISOString(),
-            updated_at: comment.updated_at.toISOString(),
-            parent_id: comment.parent_id ?? null,
-            user: {
-                id: comment.user.id,
-                username: comment.user.username,
-                avatar_url: comment.user.avatar_url,
-            },
-            userRating,
-            likesCount: comment.likes.length,
-            replies: comment.replies?.map((r: any) => formatComment(r, userId)) || [],
-        };
+		const likedByMe = userId
+			? comment.likes.some((like: any) => like.user_id === userId)
+			: undefined;
 
-        if (userId) formatted.likedByMe = likedByMe;
+		const formatted: any = {
+			id: comment.id,
+			content: comment.content,
+			created_at: comment.created_at.toISOString(),
+			updated_at: comment.updated_at.toISOString(),
+			parent_id: comment.parent_id ?? null,
+			user: {
+				id: comment.user.id,
+				username: comment.user.username,
+				avatar_url: comment.user.avatar_url,
+			},
+			userRating,
+			likesCount: comment.likes.length,
+			replies: [],
+		};
 
-        return formatted;
-    }
+		if (userId) {
+			formatted.likedByMe = likedByMe;
+		}
 
-	const formattedComments = rootComments.map((c) => formatComment(c, userId));
+		return formatted;
+	}
+
+	// 4️⃣ Build recursive tree (UNLIMITED depth)
+	function buildCommentTree(comments: any[], userId?: string) {
+		const map = new Map<string, any>();
+		const roots: any[] = [];
+
+		// First pass: format and index
+		for (const comment of comments) {
+			map.set(comment.id, formatComment(comment, userId));
+		}
+
+		// Second pass: attach children to parents
+		for (const comment of comments) {
+			const formatted = map.get(comment.id);
+
+			if (comment.parent_id) {
+				const parent = map.get(comment.parent_id);
+				if (parent) {
+					parent.replies.push(formatted);
+				}
+			} else {
+				roots.push(formatted);
+			}
+		}
+
+		return roots;
+	}
+
+	// 5️⃣ Build final response
+	const formattedComments = buildCommentTree(comments, userId);
+
 	res.json({
 		comments: formattedComments,
 	});
@@ -114,33 +121,31 @@ export async function getCommentsByBook(req: Request, res: Response) {
 // ----- POST /api/comments/:bookId --
 // -----------------------------------
 export async function addComment(req: Request, res: Response) {
+	const { bookId } = req.params;
+	const userId = req.userId;
 
-  const { bookId } = req.params;
-  const userId = req.userId;
-  
-  // Check if user is authenticated
-  if (!userId) {
-    throw new UnauthorizedError("Utilisateur non authentifié");
-  }
+	// Check if user is authenticated
+	if (!userId) {
+		throw new UnauthorizedError("Utilisateur non authentifié");
+	}
 
-  // Zod validation
-  const parsed = addCommentSchema.safeParse(req.body);
+	// Zod validation
+	const parsed = addCommentSchema.safeParse(req.body);
 
-  if (!parsed.success) {
-    const message =
-      parsed.error.issues[0]?.message ?? "Données invalides";
-    throw new BadRequestError(message);
-  }
+	if (!parsed.success) {
+		const message = parsed.error.issues[0]?.message ?? "Données invalides";
+		throw new BadRequestError(message);
+	}
 
-  const { content, parent_id } = parsed.data;
+	const { content, parent_id } = parsed.data;
 
-  // ✅ SANITIZE CONTENT
-  const safeContent = sanitizeHtml(content);
+	// ✅ SANITIZE CONTENT
+	const safeContent = sanitizeHtml(content);
 
-  // Validate content
-  if (!safeContent || content.trim() === "") {
-    throw new BadRequestError("Contenu du commentaire requis");
-  }
+	// Validate content
+	if (!safeContent || content.trim() === "") {
+		throw new BadRequestError("Contenu du commentaire requis");
+	}
 
 	// Check if book exists
 	const bookExists = await prisma.books.findUnique({ where: { id: bookId } });
@@ -160,32 +165,32 @@ export async function addComment(req: Request, res: Response) {
 		parentConnect = { connect: { id: parent_id } };
 	}
 
-  // Create the comment
-  const newComment = await prisma.comments.create({
-    data: {
-      content: safeContent,
-      user: { connect: { id: userId } },
-      book: { connect: { id: bookId } },
-      parent: parentConnect,
-    },
-    include: {
-      user: { select: { id: true, username: true } },
-      likes: true,
-      replies: true,
-    },
-  });
+	// Create the comment
+	const newComment = await prisma.comments.create({
+		data: {
+			content: safeContent,
+			user: { connect: { id: userId } },
+			book: { connect: { id: bookId } },
+			parent: parentConnect,
+		},
+		include: {
+			user: { select: { id: true, username: true, avatar_url: true } },
+			likes: true,
+			replies: true,
+		},
+	});
 
-  // Format for frontend
-  const formattedComment = {
-    id: newComment.id,
-    content: newComment.content,
-    created_at: newComment.created_at.toISOString(),
-    updated_at: newComment.updated_at.toISOString(),
-    parent_id: newComment.parent_id ?? null,
-    user: newComment.user,
-    likesCount: newComment.likes.length,
-    replies: [],
-  };
+	// Format for frontend
+	const formattedComment = {
+		id: newComment.id,
+		content: newComment.content,
+		created_at: newComment.created_at.toISOString(),
+		updated_at: newComment.updated_at.toISOString(),
+		parent_id: newComment.parent_id ?? null,
+		user: newComment.user,
+		likesCount: newComment.likes.length,
+		replies: [],
+	};
 
 	res.status(201).json(formattedComment);
 }
@@ -227,78 +232,78 @@ export async function toggleCommentLike(req: Request, res: Response) {
 }
 
 export async function deleteCommentById(req: Request, res: Response) {
-  const { bookId, commentId } = req.params;
+	const { bookId, commentId } = req.params;
 
-  // Check if comment exists
-  const comment = await prisma.comments.findUnique({ 
-    where: { id: commentId, book_id: bookId, } });
+	// Check if comment exists
+	const comment = await prisma.comments.findUnique({
+		where: { id: commentId, book_id: bookId },
+	});
 
-  if (!comment) {
-    throw new NotFoundError("Commentaire introuvable");
-  }
+	if (!comment) {
+		throw new NotFoundError("Commentaire introuvable");
+	}
 
-  // Delete the comment
-  await prisma.comments.delete({ 
-    where: { id: commentId } 
-  });
+	// Delete the comment
+	await prisma.comments.delete({
+		where: { id: commentId },
+	});
 
-  res.status(204).send();
+	res.status(204).send();
 }
 
 export async function updateCommentById(req: Request, res: Response) {
-  const { commentId } = req.params;
-  const userId = req.userId;
-  
-  // Check if user is authenticated
-  if (!userId) {
-    throw new UnauthorizedError("Utilisateur non authentifié");
-  }
+	const { commentId } = req.params;
+	const userId = req.userId;
 
-  // Zod validation
-  const parsed = updateCommentSchema.safeParse(req.body);
-  
-  if (!parsed.success) {
-    const message =
-      parsed.error.issues[0]?.message ?? "Données invalides";
-    throw new BadRequestError(message);
-  }
+	// Check if user is authenticated
+	if (!userId) {
+		throw new UnauthorizedError("Utilisateur non authentifié");
+	}
 
-  const { content } = parsed.data;
+	// Zod validation
+	const parsed = updateCommentSchema.safeParse(req.body);
 
-  // ✅ SANITIZE CONTENT
-  const safeContent = sanitizeHtml(content).trim();
+	if (!parsed.success) {
+		const message = parsed.error.issues[0]?.message ?? "Données invalides";
+		throw new BadRequestError(message);
+	}
 
-  if (!safeContent) {
-    throw new BadRequestError("Contenu invalide après nettoyage");
-  }
+	const { content } = parsed.data;
 
-  const comment = await prisma.comments.findUnique({
-    where: {
-      id: commentId,
-    },
-  });
+	// ✅ SANITIZE CONTENT
+	const safeContent = sanitizeHtml(content).trim();
 
-  if (!comment) {
-    throw new NotFoundError("Commentaire introuvable");
-  }
+	if (!safeContent) {
+		throw new BadRequestError("Contenu invalide après nettoyage");
+	}
 
-  // Sécurité: auteur OU admin
-  const isOwner = req.userId === comment.user_id;
-  const isAdmin = req.userRole === "admin";
+	const comment = await prisma.comments.findUnique({
+		where: {
+			id: commentId,
+		},
+	});
 
-  if (!isOwner && !isAdmin) {
-    throw new ForbiddenError("Modification non autorisée");
-  }
+	if (!comment) {
+		throw new NotFoundError("Commentaire introuvable");
+	}
 
-  const updatedComment = await prisma.comments.update({
-    where: { id: commentId },
-    data: { content },
-  });
+	// Sécurité: auteur OU admin
+	const isOwner = req.userId === comment.user_id;
+	const isAdmin = req.userRole === "admin";
 
-  res.json({
-    id: updatedComment.id,
-    content: updatedComment.content,
-    created_at: updatedComment.created_at.toISOString(),
-    updated_at: updatedComment.updated_at.toISOString(),
-  });
+	if (!isOwner && !isAdmin) {
+		throw new ForbiddenError("Modification non autorisée");
+	}
+
+	const updatedComment = await prisma.comments.update({
+		where: { id: commentId },
+		data: { content },
+	});
+
+	res.json({
+		id: updatedComment.id,
+		content: updatedComment.content,
+		created_at: updatedComment.created_at.toISOString(),
+		updated_at: updatedComment.updated_at.toISOString(),
+	});
 }

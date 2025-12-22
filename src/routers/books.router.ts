@@ -302,6 +302,74 @@ router.post("/books/:bookId/comments", isAuth, addComment);
 
 /**
  * @swagger
+ * /api/books/{bookId}/comments/{commentId}:
+ *   patch:
+ *     summary: Update a comment by its ID
+ *     tags: [Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bookId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the book
+ *         example: "clh3j4k5l6m7n8o9p0q1"
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the comment to update
+ *         example: "cmt1234567890"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 example: "Updated comment text here."
+ *     responses:
+ *       200:
+ *         description: Comment updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   example: "cmt1234567890"
+ *                 content:
+ *                   type: string
+ *                   example: "Updated comment text here."
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-12-22T14:30:00.000Z"
+ *                 updated_at:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-12-22T15:00:00.000Z"
+ *       400:
+ *         description: Bad request (invalid or sanitized content)
+ *       401:
+ *         description: Unauthenticated user
+ *       403:
+ *         description: Forbidden (not author or admin)
+ *       404:
+ *         description: Comment not found
+ */
+router.patch("/books/:bookId/comments/:commentId", isAuth, updateCommentById);
+
+/**
+ * @swagger
  * /api/books/{bookId}/comments/{commentId}/like:
  *   post:
  *     summary: Toggle like on a comment
