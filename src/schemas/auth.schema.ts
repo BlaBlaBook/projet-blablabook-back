@@ -29,6 +29,7 @@ export const updateUserSchema = z.object({
 	first_name: z.string().optional(),
 	last_name: z.string().optional(),
 	avatar_url: z.url().optional(),
+	bio: z.string().optional(),
 	currentPassword: passwordValidationSchema.optional(),
 	newPassword: passwordValidationSchema.optional(),
 	confirmPassword: passwordValidationSchema.optional(),

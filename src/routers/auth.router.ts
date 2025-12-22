@@ -218,6 +218,12 @@ router.post("/auth/logout", isAuth, logoutUser);
  *                   type: string
  *                 username:
  *                   type: string
+ *                 first_name:
+ *                   type: string
+ *                 last_name:
+ *                   type: string
+ *                 bio:
+ *                   type: string
  *                 created_at:
  *                   type: string
  *                   format: date-time
@@ -291,6 +297,9 @@ router.delete("/auth/me", isAuth, deleteCurrentUser);
  *                 type: string
  *                 format: url
  *                 example: https://example.com/avatar.jpg
+ *               bio:
+ *                 type: string
+ *                 example: "I love reading books!"
  *               currentPassword:
  *                 type: string
  *                 format: password
