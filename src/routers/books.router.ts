@@ -370,6 +370,41 @@ router.patch("/books/:bookId/comments/:commentId", isAuth, updateCommentById);
 
 /**
  * @swagger
+ * /api/books/{bookId}/comments/{commentId}:
+ *   delete:
+ *     summary: Delete a comment by its ID
+ *     tags: [Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bookId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the book
+ *         example: "clh3j4k5l6m7n8o9p0q1"
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the comment to delete
+ *         example: "cmt1234567890"
+ *     responses:
+ *       204:
+ *         description: Comment deleted successfully (no content)
+ *       401:
+ *         description: Unauthenticated user
+ *       403:
+ *         description: Forbidden (not author or admin)
+ *       404:
+ *         description: Comment not found
+ */
+router.delete("/books/:bookId/comments/:commentId", isAdmin, deleteCommentById);
+
+/**
+ * @swagger
  * /api/books/{bookId}/comments/{commentId}/like:
  *   post:
  *     summary: Toggle like on a comment
