@@ -11,6 +11,7 @@ import {
 	forgotPassword,
 	resetPassword,
 } from "../controllers/auth.controller.ts";
+import { authRateLimiter } from "../middlewares/authRateLimit.middleware.ts";
 import { isAuth } from "../middlewares/isAuth.middleware.ts";
 
 /**
@@ -80,7 +81,7 @@ export const router = Router();
  *       400:
  *         description: Bad request (validation error, email/username already exists, passwords don't match)
  */
-router.post("/auth/register", registerUser);
+router.post("/auth/register", authRateLimiter, registerUser);
 
 /**
  * @swagger
@@ -112,11 +113,11 @@ router.post("/auth/register", registerUser);
  *       400:
  *         description: Invalid credentials or account created with Google OAuth
  */
-router.post("/auth/login", loginUser);
+router.post("/auth/login", authRateLimiter, loginUser);
 /**
  * /api/auth/google:
  */
-router.post("/auth/google", googleAuth);
+router.post("/auth/google", authRateLimiter, googleAuth);
 
 /**
  * @swagger
@@ -141,7 +142,7 @@ router.post("/auth/google", googleAuth);
  *       204:
  *         description: Password reset email sent (if email exists)
  */
-router.post("/auth/forgot-password", forgotPassword);
+router.post("/auth/forgot-password", authRateLimiter, forgotPassword);
 
 /**
  * @swagger
@@ -178,7 +179,7 @@ router.post("/auth/forgot-password", forgotPassword);
  *       400:
  *         description: Invalid/expired token or passwords don't match
  */
-router.post("/auth/reset-password", resetPassword);
+router.post("/auth/reset-password", authRateLimiter, resetPassword);
 
 /**
  * @swagger
