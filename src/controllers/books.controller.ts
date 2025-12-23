@@ -8,7 +8,7 @@ import {
 	getUserRecordsInclude,
 	assertBooksIsbnUnique,
 	fetchBookWithRelations,
-	buildBookFilters
+	buildBookFilters,
 } from "../lib/books.ts";
 
 const prisma = getPrisma();
@@ -74,7 +74,16 @@ export async function getBookById(req: Request, res: Response) {
 export async function createBook(req: Request, res: Response) {
 	const data = await createBookSchema.parseAsync(req.body);
 
-	await assertBooksIsbnUnique(data.isbn);
+	// Check if book already exist, if it does return 409 res along with the bookId
+	const { exists, book } = await assertBooksIsbnUnique(data.isbn);
+	if (exists) {
+		return res
+			.status(409)
+			.send({
+				message: "A book with this ISBN already exists",
+				bookId: book?.id,
+			});
+	}
 
 	// Only keep authors with id OR first_name + last_name
 	const authorsToCreate = data.authors
@@ -158,8 +167,17 @@ export async function updateBook(req: Request, res: Response) {
 
 	// Check ISBN uniqueness if provided and changed
 	if (updateData.isbn && updateData.isbn !== existingBook.isbn) {
-		await assertBooksIsbnUnique(updateData.isbn);
-	}
+		// If book already exist, if it does return 409 res along with the bookId
+		const { exists, book } = await assertBooksIsbnUnique(updateData.isbn);
+		if (exists) {
+			return res
+				.status(409)
+				.send({
+					message: "A book with this ISBN already exists",
+					bookId: book?.id,
+				});
+		}
+	};
 
 	const { authors, genres, ...bookFields } = updateData;
 

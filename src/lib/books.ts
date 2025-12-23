@@ -86,10 +86,14 @@ export async function fetchBookWithRelations(bookId: string, userId?: string) {
 // ---- Assert ISBN uniqueness ----
 // --------------------------------
 export async function assertBooksIsbnUnique(isbn: string) {
-	const existingBook = await prisma.books.findUnique({ where: { isbn } });
-	if (existingBook)
-		throw new ConflictError("A book with this ISBN already exists");
+  const existingBook = await prisma.books.findUnique({ where: { isbn } });
+
+  return {
+    exists: !!existingBook,
+    book: existingBook,
+  };
 }
+
 
 // ----------------------------
 // ---- Build book filters ----
